@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import AgentButton from '../../components/AgentButton';
 
 function TravelerDashboard() {
   const [location, setLocation] = useState('');
@@ -139,6 +140,9 @@ function TravelerDashboard() {
           </div>
         )}
       </section>
+
+      {/* AI Agent Button */}
+      <AgentButton />
     </main>
   );
 }
