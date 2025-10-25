@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navbar';
 
 // Traveler pages
 import TravelerLogin from './features/traveler/TravelerLogin';
@@ -25,6 +26,9 @@ import PropertyDetails from './features/property/PropertyDetails';
 function App() {
   return (
     <Router>
+      {/* Navbar appears on all pages except login/signup */}
+      <Navbar />
+      
       <Routes>
         {/* Default route */}
         <Route path="/" element={<Navigate to="/traveler/login" />} />
