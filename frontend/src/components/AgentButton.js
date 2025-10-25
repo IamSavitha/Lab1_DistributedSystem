@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, Spinner } from 'react-bootstrap';
 import axios from 'axios';
 import './AgentButton.css'; // We'll create this CSS file
@@ -9,6 +9,26 @@ function AgentButton() {
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Handle keyboard events (Escape to close)
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Trap focus inside panel
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   // Toggle panel visibility
   const handleToggle = () => {
@@ -216,14 +236,20 @@ function AgentButton() {
       {isOpen && <div className="agent-backdrop" onClick={handleClose}></div>}
 
       {/* Side Panel */}
-      <div className={`agent-panel ${isOpen ? 'agent-panel-open' : ''}`}>
+      <div 
+        className={`agent-panel ${isOpen ? 'agent-panel-open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="agent-panel-title"
+        aria-hidden={!isOpen}
+      >
         {/* Header */}
         <div className="agent-panel-header">
-          <h5 className="mb-0">AI Travel Assistant</h5>
+          <h5 id="agent-panel-title" className="mb-0">AI Travel Assistant</h5>
           <button 
             className="btn-close" 
             onClick={handleClose}
-            aria-label="Close"
+            aria-label="Close AI Travel Assistant"
           ></button>
         </div>
 

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../../services/api';
 
 function PropertyDetails() {
-  const { id } = useParams(); // Get property ID from URL
+  const { id } = useParams();
   const [property, setProperty] = useState(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -21,7 +21,8 @@ function PropertyDetails() {
         const res = await api.get(`/properties/${id}`);
         setProperty(res.data);
         
-        // Check if property is already favorited
+        // OPTIMIZED: Check if this specific property is favorited
+        // Instead of fetching all favorites
         checkIfFavorite();
       } catch (err) {
         console.error('Failed to load property details:', err);
@@ -33,14 +34,22 @@ function PropertyDetails() {
     fetchProperty();
   }, [id]);
 
-  // Check if property is in favorites
+  // OPTIMIZED: Check favorite status for THIS property only
   const checkIfFavorite = async () => {
     try {
-      const res = await api.get('/traveler/favorites');
-      const favoriteIds = res.data.map(fav => fav.id);
-      setIsFavorite(favoriteIds.includes(parseInt(id)));
+      // Backend should provide endpoint: GET /favorites/check/:propertyId
+      // Returns { isFavorite: true/false }
+      const res = await api.get(`/favorites/check/${id}`);
+      setIsFavorite(res.data.isFavorite);
     } catch (err) {
-      console.error('Failed to check favorite status:', err);
+      // Fallback: if endpoint doesn't exist, check from all favorites
+      try {
+        const res = await api.get('/traveler/favorites');
+        const favoriteIds = res.data.map(fav => fav.id);
+        setIsFavorite(favoriteIds.includes(parseInt(id)));
+      } catch (fallbackErr) {
+        console.error('Failed to check favorite status:', fallbackErr);
+      }
     }
   };
 
@@ -49,12 +58,10 @@ function PropertyDetails() {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
-        // Remove from favorites
         await api.delete(`/favorites/${id}`);
         setIsFavorite(false);
         alert('Removed from favorites!');
       } else {
-        // Add to favorites
         await api.post('/favorites', { propertyId: id });
         setIsFavorite(true);
         alert('Added to favorites!');
@@ -99,11 +106,27 @@ function PropertyDetails() {
   };
 
   if (loading) {
-    return <p className="text-center mt-5">Loading property...</p>;
+    return (
+      <main className="container mt-5" role="main" aria-busy="true">
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading property...</span>
+          </div>
+          <p className="mt-2">Loading property...</p>
+        </div>
+      </main>
+    );
   }
 
   if (!property) {
-    return <p className="text-center mt-5">Property not found.</p>;
+    return (
+      <main className="container mt-5" role="main">
+        <div className="alert alert-warning" role="alert">
+          <h4 className="alert-heading">Property not found</h4>
+          <p>The property you're looking for doesn't exist or has been removed.</p>
+        </div>
+      </main>
+    );
   }
 
   // Calculate total nights and price
@@ -123,13 +146,21 @@ function PropertyDetails() {
   const totalInfo = calculateTotal();
 
   return (
-    <main className="container mt-5">
+    <main className="container mt-5" role="main">
+      {/* Breadcrumb navigation for accessibility */}
+      <nav aria-label="breadcrumb">
+        <ol className="breadcrumb">
+          <li className="breadcrumb-item"><a href="/traveler/dashboard">Search</a></li>
+          <li className="breadcrumb-item active" aria-current="page">{property.name || property.title}</li>
+        </ol>
+      </nav>
+
       <div className="row">
         {/* Property Image */}
         <div className="col-md-6 mb-4">
           <img
             src={property.imageUrl || property.image_url || 'https://via.placeholder.com/600x400?text=Property+Image'}
-            alt={`Image of ${property.name || property.title}`}
+            alt={`${property.name || property.title} - ${property.type} in ${property.location || property.city}`}
             className="img-fluid rounded shadow"
             style={{ width: '100%', height: '400px', objectFit: 'cover' }}
           />
@@ -139,9 +170,10 @@ function PropertyDetails() {
         <div className="col-md-6">
           <div className="d-flex justify-content-between align-items-start mb-3">
             <div>
-              <h2>{property.name || property.title}</h2>
+              <h1 className="h2">{property.name || property.title}</h1>
               <p className="text-muted">
-                <i className="bi bi-geo-alt-fill"></i> {property.location || property.city}
+                <span className="visually-hidden">Location:</span>
+                📍 {property.location || property.city}
               </p>
             </div>
             
@@ -150,14 +182,16 @@ function PropertyDetails() {
               className={`btn ${isFavorite ? 'btn-danger' : 'btn-outline-danger'}`}
               onClick={handleToggleFavorite}
               disabled={favoriteLoading}
-              style={{ minWidth: '120px' }}
+              style={{ minWidth: '140px' }}
+              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-pressed={isFavorite}
             >
               {favoriteLoading ? (
                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               ) : isFavorite ? (
-                <>Favorited</>
+                <>❤️ Favorited</>
               ) : (
-                <>Add to Favorites</>
+                <>🤍 Add to Favorites</>
               )}
             </button>
           </div>
@@ -167,37 +201,49 @@ function PropertyDetails() {
           {/* Property Details */}
           <div className="card mb-4">
             <div className="card-body">
-              <h5 className="card-title">Property Details</h5>
-              <ul className="list-unstyled">
-                <li><strong>Type:</strong> {property.type}</li>
-                <li><strong>Bedrooms:</strong> {property.bedrooms}</li>
-                <li><strong>Bathrooms:</strong> {property.bathrooms}</li>
-                <li><strong>Max Guests:</strong> {property.maxGuests || property.max_guests}</li>
+              <h2 className="h5 card-title">Property Details</h2>
+              <dl className="row mb-0">
+                <dt className="col-sm-4">Type:</dt>
+                <dd className="col-sm-8">{property.type}</dd>
+                
+                <dt className="col-sm-4">Bedrooms:</dt>
+                <dd className="col-sm-8">{property.bedrooms}</dd>
+                
+                <dt className="col-sm-4">Bathrooms:</dt>
+                <dd className="col-sm-8">{property.bathrooms}</dd>
+                
+                <dt className="col-sm-4">Max Guests:</dt>
+                <dd className="col-sm-8">{property.maxGuests || property.max_guests}</dd>
+                
                 {property.amenities && (
-                  <li><strong>Amenities:</strong> {
-                    typeof property.amenities === 'string' 
-                      ? property.amenities 
-                      : JSON.parse(property.amenities).join(', ')
-                  }</li>
+                  <>
+                    <dt className="col-sm-4">Amenities:</dt>
+                    <dd className="col-sm-8">
+                      {typeof property.amenities === 'string' 
+                        ? property.amenities 
+                        : JSON.parse(property.amenities).join(', ')}
+                    </dd>
+                  </>
                 )}
-              </ul>
+              </dl>
             </div>
           </div>
 
-          <h4 className="text-primary mb-3">
-            ${property.price || property.price_per_night} / night
-          </h4>
+          <p className="h4 text-primary mb-3">
+            <span className="visually-hidden">Price:</span>
+            ${property.price || property.price_per_night} per night
+          </p>
         </div>
       </div>
 
       {/* Booking Form */}
-      <section className="mt-5">
+      <section className="mt-5" aria-labelledby="booking-section">
         <div className="row justify-content-center">
           <div className="col-md-8">
             <div className="card shadow">
               <div className="card-body">
-                <h3 className="card-title mb-4">Request Booking</h3>
-                <form onSubmit={handleBooking} aria-label="Booking form">
+                <h2 id="booking-section" className="h3 card-title mb-4">Request Booking</h2>
+                <form onSubmit={handleBooking} aria-label="Property booking form">
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label htmlFor="startDate" className="form-label">Check-in Date</label>
@@ -209,6 +255,7 @@ function PropertyDetails() {
                         onChange={(e) => setStartDate(e.target.value)}
                         min={new Date().toISOString().split('T')[0]}
                         required
+                        aria-required="true"
                       />
                     </div>
                     <div className="col-md-4">
@@ -221,6 +268,7 @@ function PropertyDetails() {
                         onChange={(e) => setEndDate(e.target.value)}
                         min={startDate || new Date().toISOString().split('T')[0]}
                         required
+                        aria-required="true"
                       />
                     </div>
                     <div className="col-md-4">
@@ -234,15 +282,16 @@ function PropertyDetails() {
                         value={guests}
                         onChange={(e) => setGuests(e.target.value)}
                         required
+                        aria-required="true"
                       />
                     </div>
                   </div>
 
                   {/* Price Summary */}
                   {totalInfo && (
-                    <div className="alert alert-info mt-3" role="alert">
+                    <div className="alert alert-info mt-3" role="status" aria-live="polite">
                       <strong>Price Summary:</strong><br />
-                      ${property.price || property.price_per_night} x {totalInfo.nights} {totalInfo.nights === 1 ? 'night' : 'nights'} = <strong>${totalInfo.total}</strong>
+                      ${property.price || property.price_per_night} × {totalInfo.nights} {totalInfo.nights === 1 ? 'night' : 'nights'} = <strong>${totalInfo.total}</strong>
                     </div>
                   )}
 
@@ -251,8 +300,16 @@ function PropertyDetails() {
                       type="submit" 
                       className="btn btn-success btn-lg"
                       disabled={bookingLoading}
+                      aria-busy={bookingLoading}
                     >
-                      {bookingLoading ? 'Submitting...' : 'Submit Booking Request'}
+                      {bookingLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Booking Request'
+                      )}
                     </button>
                   </div>
                 </form>
