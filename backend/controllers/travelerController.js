@@ -283,10 +283,25 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Upload profile picture
+const uploadProfileImage = async (req, res) => {
+  try {
+    if (!req.session.travelerId) return res.status(401).json({ success:false, message:'Unauthorized' });
+    if (!req.file) return res.status(400).json({ success:false, message:'No file uploaded' });
+
+    const db = require('../config/database');
+    await db.query('UPDATE travelers SET profile_picture=? WHERE id=?', [req.file.buffer.toString('base64'), req.session.travelerId]);
+    res.json({ success: true, message: 'Profile picture updated' });
+  } catch (e) {
+    res.status(500).json({ success:false, message:'Upload failed' });
+  }
+};
+
 module.exports = {
   signup,
   login,
   logout,
   getProfile,
-  updateProfile
+  updateProfile,
+  uploadProfileImage
 };
