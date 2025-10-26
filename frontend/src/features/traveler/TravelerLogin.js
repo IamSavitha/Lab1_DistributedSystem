@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { loginTraveler } from './travelerSlice';
 import api from '../../services/api';
 
 function TravelerLogin() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // Local state for form inputs
   const [email, setEmail] = useState('');
@@ -22,7 +24,10 @@ function TravelerLogin() {
       // Dispatch login action to Redux store
       dispatch(loginTraveler(response.data));
       alert('Login successful');
-      // Redirect or navigate to dashboard if needed
+      
+      // Redirect to dashboard
+      navigate('/traveler/dashboard');
+      
     } catch (error) {
       console.error('Login error:', error);
       alert('Login failed. Please check your credentials.');
@@ -65,6 +70,15 @@ function TravelerLogin() {
               Log In
             </button>
           </form>
+          
+          <div className="text-center mt-3">
+            <p className="text-muted">
+              Don't have an account?{' '}
+              <a href="/traveler/signup" className="text-primary">
+                Sign up here
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </main>
