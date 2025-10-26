@@ -1,0 +1,23 @@
+# FastAPI Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-dotenv==1.0.0
+
+# LangChain and AI
+langchain==0.1.0
+langchain-openai==0.0.2
+langchain-community==0.0.10
+
+# Tavily Search
+tavily-python==0.3.0
+
+# MySQL Connection
+mysql-connector-python==8.2.0
+
+# HTTP Client
+httpx==0.25.2
+aiohttp==3.9.1
+
+# Utilities
+python-dateutil==2.8.2
