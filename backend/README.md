@@ -146,8 +146,8 @@ http://localhost:4000/health
 | Method | Route | Description |
 |--------|--------|-------------|
 | GET | `/api/bookings/owner` | Owner bookings |
-| PUT | `/api/bookings/:id/accept` | Accept booking |
-| PUT | `/api/bookings/:id/cancel` | Cancel booking |
+| PUT | `/api/bookings/owner/:id/accept` | Accept booking |
+| PUT | `/api/bookings/owner/:id/cancel` | Cancel booking |
 
 ## Testing with Postman
 - Traveler: signup, login, profile, upload image ,create booking
