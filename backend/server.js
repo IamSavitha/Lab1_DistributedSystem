@@ -3,7 +3,35 @@ const session = require('express-session');
 const cors = require('cors');
 require('dotenv').config();
 
+// Database connection
+const mysql = require('mysql2/promise');
+
 const app = express();
+
+// Create database connection pool
+const db = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'airbnb_db',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
+// Test database connection
+db.getConnection()
+  .then(connection => {
+    console.log('✅ Database connected successfully');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('❌ Database connection failed:', err.message);
+    console.error('Please check your .env file and MySQL server');
+  });
+
+// Make database available to routes
+app.set('db', db);
 
 // Import routes - only the ones that exist
 const travelerRoutes = require('./routes/travelerRoutes');
