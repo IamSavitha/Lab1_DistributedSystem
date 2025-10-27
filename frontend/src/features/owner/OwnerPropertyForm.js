@@ -37,9 +37,11 @@ const AMENITIES_OPTIONS = [
 ];
 
 function OwnerPropertyForm() {
-  const { propertyId } = useParams();
+  const params = useParams();
   const navigate = useNavigate();
 
+  // Support both 'id' and 'propertyId' parameter names
+  const propertyId = params.propertyId || params.id;
   const isEdit = Boolean(propertyId);
 
   const [form, setForm] = useState({
@@ -70,10 +72,13 @@ function OwnerPropertyForm() {
   }, [propertyId, isEdit]);
 
   const fetchProperty = async () => {
+    console.log('Fetching property with ID:', propertyId);
     setLoading(true);
     try {
       const res = await api.get(`/owner/properties/${propertyId}`);
-      const property = res.data;
+      console.log('Property data received:', res.data);
+      // Backend may return { property: {...} } or just {...}
+      const property = res.data.property || res.data;
       
       // Parse amenities if it's a JSON string
       let amenitiesArray = [];
@@ -89,7 +94,14 @@ function OwnerPropertyForm() {
         }
       }
 
-      setForm({
+      // Parse dates if needed
+      const formatDate = (dateValue) => {
+        if (!dateValue) return '';
+        const date = new Date(dateValue);
+        return date.toISOString().split('T')[0];
+      };
+
+      const formData = {
         name: property.name || property.title || '',
         type: property.type || '',
         location: property.location || '',
@@ -103,12 +115,15 @@ function OwnerPropertyForm() {
         imageUrl: property.imageUrl || property.image_url || '',
         description: property.description || '',
         amenities: amenitiesArray,
-        availableFrom: property.availableFrom || property.available_from || '',
-        availableTo: property.availableTo || property.available_to || '',
-      });
+        availableFrom: formatDate(property.availableFrom || property.available_from),
+        availableTo: formatDate(property.availableTo || property.available_to),
+      };
+
+      console.log('Form data after parsing:', formData);
+      setForm(formData);
     } catch (err) {
       console.error('Failed to load property:', err);
-      alert('Failed to load property.');
+      alert('Failed to load property: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -135,6 +150,8 @@ function OwnerPropertyForm() {
         amenities: JSON.stringify(form.amenities), // Send as JSON string
       };
 
+      console.log('Submitting payload:', payload);
+
       if (isEdit) {
         await api.put(`/owner/properties/${propertyId}`, payload);
         alert('Property updated successfully!');
@@ -145,7 +162,7 @@ function OwnerPropertyForm() {
       navigate('/owner/properties');
     } catch (err) {
       console.error('Error saving property:', err);
-      alert('Error saving property. Please try again.');
+      alert('Error saving property: ' + (err.response?.data?.error || err.message));
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +181,12 @@ function OwnerPropertyForm() {
   if (loading) {
     return (
       <main className="container mt-5">
-        <p className="text-center">Loading property...</p>
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading property...</p>
+        </div>
       </main>
     );
   }
@@ -290,7 +312,7 @@ function OwnerPropertyForm() {
               className="form-control"
               min="1"
               value={form.bedrooms}
-              onChange={(e) => setForm({ ...form, bedrooms: parseInt(e.target.value) })}
+              onChange={(e) => setForm({ ...form, bedrooms: parseInt(e.target.value) || 1 })}
               required
             />
           </div>
@@ -304,7 +326,7 @@ function OwnerPropertyForm() {
               min="1"
               step="0.5"
               value={form.bathrooms}
-              onChange={(e) => setForm({ ...form, bathrooms: parseFloat(e.target.value) })}
+              onChange={(e) => setForm({ ...form, bathrooms: parseFloat(e.target.value) || 1 })}
               required
             />
           </div>
@@ -317,7 +339,7 @@ function OwnerPropertyForm() {
               className="form-control"
               min="1"
               value={form.maxGuests}
-              onChange={(e) => setForm({ ...form, maxGuests: parseInt(e.target.value) })}
+              onChange={(e) => setForm({ ...form, maxGuests: parseInt(e.target.value) || 1 })}
               required
             />
           </div>

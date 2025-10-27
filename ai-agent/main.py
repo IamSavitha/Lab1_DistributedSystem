@@ -1,7 +1,3 @@
- 
-Main · PY
-Copy
-
 """
 FastAPI Server for AI Travel Agent
 Main entry point for the AI Agent service
@@ -21,7 +17,6 @@ import database
 
 load_dotenv()
 
-# Initialize FastAPI app
 app = FastAPI(
     title="AI Travel Concierge Agent",
     description="AI-powered travel planning service using LangChain and Tavily",
@@ -33,45 +28,48 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001").split(","),
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# Pydantic Models for Request/Response
+# Request/Response Models
 
 class BookingDates(BaseModel):
-    startDate: str = Field(..., description="Check-in date in YYYY-MM-DD format")
-    endDate: str = Field(..., description="Check-out date in YYYY-MM-DD format")
+    startDate: str = Field(..., description="Check-in date (YYYY-MM-DD)")
+    endDate: str = Field(..., description="Check-out date (YYYY-MM-DD)")
 
 
 class BookingContext(BaseModel):
-    bookingId: Optional[int] = Field(None, description="Optional booking ID to fetch from database")
-    propertyId: Optional[int] = Field(None, description="Optional property ID")
-    location: str = Field(..., description="Destination city or location")
-    dates: BookingDates = Field(..., description="Travel dates")
-    partyType: str = Field(default="solo", description="Type of travel party: solo, couple, family, friends")
+    bookingId: Optional[int] = Field(None, description="Existing booking ID")
+    propertyId: Optional[int] = Field(None, description="Property ID")
+    location: Optional[str] = Field(None, description="Destination city")
+    dates: Optional[BookingDates] = Field(None, description="Travel dates")
+    partyType: str = Field(default="solo", description="Party type: solo, couple, family, friends")
     guests: int = Field(default=1, description="Number of guests")
 
 
 class TravelPreferences(BaseModel):
-    budget: str = Field(default="medium", description="Budget level: low, medium, high")
-    interests: List[str] = Field(default=[], description="List of interests: museums, food, nature, adventure, etc.")
-    mobilityNeeds: List[str] = Field(default=[], description="Mobility requirements: wheelchair, limited-mobility, etc.")
-    dietaryFilters: List[str] = Field(default=[], description="Dietary restrictions: vegetarian, vegan, gluten-free, halal, kosher")
+    budget: Optional[str] = Field(None, description="Budget level: budget, medium, luxury")
+    interests: Optional[List[str]] = Field(default_factory=list, description="User interests")
+    dietaryFilters: Optional[List[str]] = Field(default_factory=list, description="Dietary restrictions")
+    mobilityNeeds: Optional[List[str]] = Field(default_factory=list, description="Mobility requirements")
 
 
 class TravelPlanRequest(BaseModel):
-    query: str = Field(..., description="Free-text query from user describing their needs")
-    bookingContext: BookingContext = Field(..., description="Booking and trip context")
-    preferences: TravelPreferences = Field(..., description="User preferences and requirements")
-
+    query: str = Field(..., description="Free-text user query")
+    bookingContext: BookingContext = Field(..., description="Booking context")
+    preferences: Optional[TravelPreferences] = Field(
+        default_factory=TravelPreferences,
+        description="User preferences (optional, AI will infer if missing)"
+    )
+    
     class Config:
         schema_extra = {
             "example": {
-                "query": "We're visiting Paris for 3 days with my family. We love museums and good food. We're vegetarian and have two kids.",
+                "query": "We love museums and good food. We're vegetarian and have two kids.",
                 "bookingContext": {
                     "location": "Paris",
                     "dates": {
@@ -89,35 +87,6 @@ class TravelPlanRequest(BaseModel):
                 }
             }
         }
-
-
-class DayPlan(BaseModel):
-    day: int
-    morning: str
-    afternoon: str
-    evening: str
-
-
-class Activity(BaseModel):
-    title: str
-    address: str
-    geolocation: Optional[Dict[str, float]] = None
-    priceTier: str
-    duration: str
-    tags: List[str]
-    wheelchairAccessible: bool
-    childFriendly: bool
-    description: str
-
-
-class Restaurant(BaseModel):
-    name: str
-    cuisine: str
-    address: str
-    geolocation: Optional[Dict[str, float]] = None
-    dietaryOptions: List[str]
-    priceTier: str
-    description: str
 
 
 class LocalContext(BaseModel):
@@ -156,13 +125,21 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    db_status = database.test_connection()
-    
-    return {
-        "status": "healthy" if db_status else "degraded",
-        "database": "connected" if db_status else "disconnected",
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        db_status = database.test_connection()
+        
+        return {
+            "status": "healthy" if db_status else "degraded",
+            "database": "connected" if db_status else "disconnected",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "degraded",
+            "database": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 @app.post("/ai-agent/plan", response_model=TravelPlanResponse)
@@ -175,26 +152,22 @@ async def generate_travel_plan(request: TravelPlanRequest):
     2. Optionally fetches booking details from MySQL database
     3. Performs Tavily web search for POIs, restaurants, weather, events
     4. Uses LangChain + GPT-4 to generate personalized itinerary
-    5. Returns structured travel plan with activities, restaurants, and packing list
-    
-    Returns:
-    - dayByDayPlan: Array of daily plans with morning/afternoon/evening activities
-    - activities: Activity cards with details, accessibility flags, and tags
-    - restaurants: Restaurant recommendations filtered by dietary needs
-    - packingChecklist: Weather-aware packing list
-    - localContext: Weather, events, and transportation information
+    5. Uses AI to infer user preferences from booking history if not provided
+    6. Returns comprehensive travel plan with activities, restaurants, packing list
     """
     try:
-        print(f"\n{'='*60}")
-        print(f"Received travel plan request")
-        print(f"Query: {request.query[:100]}...")
-        print(f"Location: {request.bookingContext.location}")
-        print(f"Dates: {request.bookingContext.dates.startDate} to {request.bookingContext.dates.endDate}")
-        print(f"{'='*60}\n")
+        print("=" * 70)
+        print("Received travel plan request")
+        print(f"Query: {request.query}")
+        print(f"Booking Context: {request.bookingContext.dict()}")
+        print(f"Preferences: {request.preferences.dict() if request.preferences else {}}")
+        print("=" * 70)
         
         # Convert Pydantic models to dictionaries
         booking_context = request.bookingContext.dict()
-        preferences = request.preferences.dict()
+        
+        # Handle optional preferences - if empty, pass empty dict for AI inference
+        preferences = request.preferences.dict() if request.preferences else {}
         
         # Generate travel plan using AI agent
         travel_plan = agent.create_travel_plan(
@@ -203,141 +176,84 @@ async def generate_travel_plan(request: TravelPlanRequest):
             preferences=preferences
         )
         
-        print(f"\n{'='*60}")
-        print(f"Travel plan generated successfully")
-        print(f"Days: {len(travel_plan['dayByDayPlan'])}")
-        print(f"Activities: {len(travel_plan['activities'])}")
-        print(f"Restaurants: {len(travel_plan['restaurants'])}")
-        print(f"Packing items: {len(travel_plan['packingChecklist'])}")
-        print(f"{'='*60}\n")
+        if not travel_plan.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate travel plan"
+            )
+        
+        print("=" * 70)
+        print("Travel plan generated successfully!")
+        print(f"Activities: {len(travel_plan.get('activities', []))}")
+        print(f"Restaurants: {len(travel_plan.get('restaurants', []))}")
+        print(f"Days: {len(travel_plan.get('dayByDayPlan', []))}")
+        print("=" * 70)
         
         return travel_plan
         
-    except Exception as e:
-        print(f"\nError generating travel plan: {e}\n")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "success": False,
-                "message": "Failed to generate travel plan",
-                "error": str(e)
-            }
-        )
-
-
-@app.get("/booking/{booking_id}")
-async def get_booking(booking_id: int):
-    """
-    Get booking details from database
-    
-    This is a helper endpoint to test database connectivity
-    """
-    try:
-        booking = database.get_booking_by_id(booking_id)
-        
-        if not booking:
-            raise HTTPException(
-                status_code=404,
-                detail={"success": False, "message": "Booking not found"}
-            )
-        
-        return {
-            "success": True,
-            "booking": booking
-        }
-        
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Error generating travel plan: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail={
-                "success": False,
-                "message": "Failed to fetch booking",
-                "error": str(e)
-            }
+            detail=f"Internal server error: {str(e)}"
         )
 
 
-@app.get("/property/{property_id}")
-async def get_property(property_id: int):
+@app.get("/ai-agent/test")
+async def test_components():
     """
-    Get property details from database
+    Test endpoint to verify all components are working
+    """
+    results = {
+        "database": False,
+        "tavily": False,
+        "openai": False,
+        "errors": []
+    }
     
-    This is a helper endpoint to test database connectivity
-    """
+    # Test database
     try:
-        property_data = database.get_property_by_id(property_id)
-        
-        if not property_data:
-            raise HTTPException(
-                status_code=404,
-                detail={"success": False, "message": "Property not found"}
-            )
-        
-        return {
-            "success": True,
-            "property": property_data
-        }
-        
-    except HTTPException:
-        raise
+        results["database"] = database.test_connection()
+        if not results["database"]:
+            results["errors"].append("Database connection failed")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "success": False,
-                "message": "Failed to fetch property",
-                "error": str(e)
-            }
-        )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Run on server startup"""
-    print("\n" + "="*60)
-    print("AI Travel Concierge Agent Starting...")
-    print("="*60)
-    print(f"Environment: {os.getenv('API_ENV', 'development')}")
-    print(f"Port: {os.getenv('API_PORT', 8000)}")
-    print(f"CORS Origins: {os.getenv('CORS_ORIGINS', 'http://localhost:3000')}")
+        results["errors"].append(f"Database error: {str(e)}")
     
-    # Test database connection
-    db_connected = database.test_connection()
-    if db_connected:
-        print("Database: Connected")
+    # Test environment variables
+    required_vars = ["OPENAI_API_KEY", "TAVILY_API_KEY", "DB_HOST", "DB_NAME"]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    
+    if missing_vars:
+        results["errors"].append(f"Missing environment variables: {', '.join(missing_vars)}")
     else:
-        print("Database: Not connected (some features may not work)")
+        results["openai"] = bool(os.getenv("OPENAI_API_KEY"))
+        results["tavily"] = bool(os.getenv("TAVILY_API_KEY"))
     
-    # Check API keys
-    openai_key = os.getenv("OPENAI_API_KEY")
-    tavily_key = os.getenv("TAVILY_API_KEY")
-    
-    if openai_key and openai_key.startswith("sk-"):
-        print("OpenAI API: Configured")
-    else:
-        print("OpenAI API: Not configured")
-    
-    if tavily_key and tavily_key.startswith("tvly-"):
-        print("Tavily API: Configured")
-    else:
-        print("Tavily API: Not configured")
-    
-    print("="*60)
-    print("API Documentation: http://localhost:8000/docs")
-    print("ReDoc: http://localhost:8000/redoc")
-    print("="*60 + "\n")
+    return {
+        "status": "healthy" if all([results["database"], results["tavily"], results["openai"]]) else "degraded",
+        "components": results,
+        "timestamp": datetime.now().isoformat()
+    }
 
 
-# Run server
 if __name__ == "__main__":
     import uvicorn
     
+    port = int(os.getenv("PORT", 8000))
+    
+    print("=" * 70)
+    print("Starting AI Travel Concierge Agent Server")
+    print(f"Port: {port}")
+    print(f"Docs: http://localhost:{port}/docs")
+    print(f"Health: http://localhost:{port}/health")
+    print(f"Test: http://localhost:{port}/ai-agent/test")
+    print("=" * 70)
+    
     uvicorn.run(
         "main:app",
-        host=os.getenv("API_HOST", "0.0.0.0"),
-        port=int(os.getenv("API_PORT", 8000)),
-        reload=True if os.getenv("API_ENV") == "development" else False
+        host="0.0.0.0",
+        port=port,
+        reload=True
     )

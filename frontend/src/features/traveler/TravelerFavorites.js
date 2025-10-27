@@ -15,8 +15,13 @@ function TravelerFavorites() {
   const fetchFavorites = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/traveler/favorites');
-      setFavorites(res.data);
+      // 修复：改为 /favorites 而不是 /traveler/favorites
+      const res = await api.get('/favorites');
+      console.log('Favorites response:', res.data);
+      
+      // 根据后端返回的数据结构解析
+      const favoritesList = res.data.favorites || res.data;
+      setFavorites(Array.isArray(favoritesList) ? favoritesList : []);
     } catch (err) {
       console.error('Failed to load favorites:', err);
       alert('Failed to load favorites.');
@@ -48,7 +53,12 @@ function TravelerFavorites() {
   if (loading) {
     return (
       <main className="container mt-5">
-        <p className="text-center">Loading your favorites...</p>
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading your favorites...</p>
+        </div>
       </main>
     );
   }

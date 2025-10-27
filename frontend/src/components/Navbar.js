@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutTraveler } from '../features/traveler/travelerSlice';
-import { logoutOwner } from '../features/owner/ownerSlice';
+import { logoutOwner } from '../features/owner/OwnerSlice';
 import api from '../services/api';
 
 function Navbar() {

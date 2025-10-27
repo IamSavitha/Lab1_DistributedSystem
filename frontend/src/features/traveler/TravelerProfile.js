@@ -31,7 +31,22 @@ function TravelerProfile() {
     const fetchProfile = async () => {
       try {
         const res = await api.get('/traveler/profile');
-        setProfile(res.data);
+        console.log('Profile response:', res.data);  // Debug log
+        
+        // 修复：使用 res.data.traveler 并映射字段名
+        const travelerData = res.data.traveler;
+        setProfile({
+          name: travelerData.name || '',
+          email: travelerData.email || '',
+          phone: travelerData.phone || '',
+          about: travelerData.about || '',
+          city: travelerData.city || '',
+          state: travelerData.state || '',
+          country: travelerData.country || '',
+          languages: travelerData.languages || '',
+          gender: travelerData.gender || '',
+          avatar_url: travelerData.profile_picture || '',  // 映射字段名
+        });
         setLoading(false);
       } catch (err) {
         console.error('Failed to load profile:', err);
@@ -49,7 +64,6 @@ function TravelerProfile() {
     try {
       await api.put('/traveler/profile', {
         name: profile.name,
-        email: profile.email,
         phone: profile.phone,
         about: profile.about,
         city: profile.city,
@@ -81,9 +95,18 @@ function TravelerProfile() {
           'Content-Type': 'multipart/form-data',
         },
       });
-      setProfile((prev) => ({ ...prev, avatar_url: res.data.imageUrl }));
-      setNewImage(null);
-      alert('Image uploaded successfully.');
+      // 修复：根据后端返回更新头像
+      if (res.data.success) {
+        // 重新获取 profile 以获取最新的 profile_picture
+        const profileRes = await api.get('/traveler/profile');
+        const travelerData = profileRes.data.traveler;
+        setProfile((prev) => ({ 
+          ...prev, 
+          avatar_url: travelerData.profile_picture || '' 
+        }));
+        setNewImage(null);
+        alert('Image uploaded successfully.');
+      }
     } catch (err) {
       console.error('Image upload failed:', err);
       alert('Image upload failed. Please try again.');
@@ -93,7 +116,12 @@ function TravelerProfile() {
   if (loading) {
     return (
       <main className="container mt-5">
-        <p className="text-center">Loading profile...</p>
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading profile...</p>
+        </div>
       </main>
     );
   }
@@ -161,7 +189,7 @@ function TravelerProfile() {
                   />
                 </div>
 
-                {/* Email */}
+                {/* Email - Read Only */}
                 <div className="mb-3">
                   <label htmlFor="email" className="form-label">
                     Email Address <span className="text-danger">*</span>
@@ -171,9 +199,13 @@ function TravelerProfile() {
                     id="email"
                     className="form-control"
                     value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    required
+                    readOnly
+                    disabled
+                    style={{ backgroundColor: '#e9ecef' }}
                   />
+                  <small className="form-text text-muted">
+                    Email cannot be changed
+                  </small>
                 </div>
 
                 {/* Phone Number */}

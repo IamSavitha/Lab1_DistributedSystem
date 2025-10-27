@@ -3,12 +3,11 @@ const express = require('express');
 const router = express.Router();
 const {
   getOwnerProperties,
+  getPropertyById,
   createProperty,
   updateProperty,
   deleteProperty
 } = require('../controllers/propertyController');
-
-
 
 const { requireOwnerAuth } = require('../middleware/auth');
 
@@ -18,6 +17,9 @@ router.use(requireOwnerAuth);
 // GET all properties owned by the logged-in owner
 router.get('/', getOwnerProperties);
 
+// GET a single property by ID (for editing)
+router.get('/:id', getPropertyById);
+
 // CREATE a new property
 router.post('/', createProperty);
 
@@ -25,13 +27,6 @@ router.post('/', createProperty);
 router.put('/:id', updateProperty);
 
 // DELETE a property
-router.delete('/:id', deleteProperty);
-// backend/routes/ownerPropertyRoutes.js
-
-router.use(requireOwnerAuth);
-router.get('/', getOwnerProperties);
-router.post('/', createProperty);
-router.put('/:id', updateProperty);
 router.delete('/:id', deleteProperty);
 
 module.exports = router;

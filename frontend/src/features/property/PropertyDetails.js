@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import AgentButton from '../../components/AgentButton';
 
 function PropertyDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [property, setProperty] = useState(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -19,10 +21,15 @@ function PropertyDetails() {
       setLoading(true);
       try {
         const res = await api.get(`/properties/${id}`);
-        setProperty(res.data);
+        console.log('Property API response:', res.data);
         
-        // OPTIMIZED: Check if this specific property is favorited
-        // Instead of fetching all favorites
+        // Handle different response formats
+        const propertyData = res.data.property || res.data;
+        console.log('Property data extracted:', propertyData);
+        
+        setProperty(propertyData);
+        
+        // Check if this specific property is favorited
         checkIfFavorite();
       } catch (err) {
         console.error('Failed to load property details:', err);
@@ -34,11 +41,9 @@ function PropertyDetails() {
     fetchProperty();
   }, [id]);
 
-  // OPTIMIZED: Check favorite status for THIS property only
+  // Check favorite status for THIS property only
   const checkIfFavorite = async () => {
     try {
-      // Backend should provide endpoint: GET /favorites/check/:propertyId
-      // Returns { isFavorite: true/false }
       const res = await api.get(`/favorites/check/${id}`);
       setIsFavorite(res.data.isFavorite);
     } catch (err) {
@@ -93,10 +98,8 @@ function PropertyDetails() {
         guests,
       });
       alert('Booking request submitted successfully!');
-      // Clear form
-      setStartDate('');
-      setEndDate('');
-      setGuests(1);
+      // Navigate to bookings page
+      navigate('/traveler/bookings');
     } catch (err) {
       console.error('Booking failed:', err);
       alert('Booking failed. Please try again.');
@@ -147,7 +150,7 @@ function PropertyDetails() {
 
   return (
     <main className="container mt-5" role="main">
-      {/* Breadcrumb navigation for accessibility */}
+      {/* Breadcrumb navigation */}
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item"><a href="/traveler/dashboard">Search</a></li>
@@ -160,7 +163,7 @@ function PropertyDetails() {
         <div className="col-md-6 mb-4">
           <img
             src={property.imageUrl || property.image_url || 'https://via.placeholder.com/600x400?text=Property+Image'}
-            alt={`${property.name || property.title} - ${property.type} in ${property.location || property.city}`}
+            alt={`${property.name || property.title} - ${property.type || 'Property'} in ${property.location || property.city || 'Location'}`}
             className="img-fluid rounded shadow"
             style={{ width: '100%', height: '400px', objectFit: 'cover' }}
           />
@@ -172,8 +175,7 @@ function PropertyDetails() {
             <div>
               <h1 className="h2">{property.name || property.title}</h1>
               <p className="text-muted">
-                <span className="visually-hidden">Location:</span>
-                📍 {property.location || property.city}
+                <i className="bi bi-geo-alt-fill"></i> {property.location || property.city}
               </p>
             </div>
             
@@ -196,7 +198,7 @@ function PropertyDetails() {
             </button>
           </div>
 
-          <p className="lead">{property.description}</p>
+          <p className="lead">{property.description || 'No description available.'}</p>
 
           {/* Property Details */}
           <div className="card mb-4">
@@ -204,24 +206,34 @@ function PropertyDetails() {
               <h2 className="h5 card-title">Property Details</h2>
               <dl className="row mb-0">
                 <dt className="col-sm-4">Type:</dt>
-                <dd className="col-sm-8">{property.type}</dd>
+                <dd className="col-sm-8">{property.type || 'N/A'}</dd>
                 
                 <dt className="col-sm-4">Bedrooms:</dt>
-                <dd className="col-sm-8">{property.bedrooms}</dd>
+                <dd className="col-sm-8">{property.bedrooms || 'N/A'}</dd>
                 
                 <dt className="col-sm-4">Bathrooms:</dt>
-                <dd className="col-sm-8">{property.bathrooms}</dd>
+                <dd className="col-sm-8">{property.bathrooms || 'N/A'}</dd>
                 
                 <dt className="col-sm-4">Max Guests:</dt>
-                <dd className="col-sm-8">{property.maxGuests || property.max_guests}</dd>
+                <dd className="col-sm-8">{property.maxGuests || property.max_guests || 'N/A'}</dd>
                 
                 {property.amenities && (
                   <>
                     <dt className="col-sm-4">Amenities:</dt>
                     <dd className="col-sm-8">
-                      {typeof property.amenities === 'string' 
-                        ? property.amenities 
-                        : JSON.parse(property.amenities).join(', ')}
+                      {(() => {
+                        try {
+                          if (typeof property.amenities === 'string') {
+                            const parsed = JSON.parse(property.amenities);
+                            return Array.isArray(parsed) ? parsed.join(', ') : property.amenities;
+                          } else if (Array.isArray(property.amenities)) {
+                            return property.amenities.join(', ');
+                          }
+                          return 'N/A';
+                        } catch (e) {
+                          return property.amenities;
+                        }
+                      })()}
                     </dd>
                   </>
                 )}
@@ -231,7 +243,7 @@ function PropertyDetails() {
 
           <p className="h4 text-primary mb-3">
             <span className="visually-hidden">Price:</span>
-            ${property.price || property.price_per_night} per night
+            ${property.price || property.price_per_night || 0} per night
           </p>
         </div>
       </div>
@@ -318,6 +330,9 @@ function PropertyDetails() {
           </div>
         </div>
       </section>
+      
+      {/* AI Agent Button */}
+      <AgentButton />
     </main>
   );
 }

@@ -1,12 +1,14 @@
-mport React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import AgentButton from '../../components/AgentButton';
 
 function TravelerBookings() {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
 
   // Fetch bookings on mount
@@ -21,12 +23,26 @@ function TravelerBookings() {
 
   const fetchBookings = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await api.get('/traveler/bookings');
-      setBookings(res.data);
+      console.log('Fetching bookings from /bookings/traveler...');
+      const res = await api.get('/bookings/traveler');
+      console.log('Bookings response:', res.data);
+      
+      // Handle different response formats
+      const bookingsList = res.data.bookings || res.data;
+      console.log('Bookings list:', bookingsList);
+      
+      setBookings(Array.isArray(bookingsList) ? bookingsList : []);
     } catch (err) {
       console.error('Failed to load bookings:', err);
-      alert('Failed to load bookings.');
+      console.error('Error details:', err.response?.data);
+      
+      if (err.response?.status === 404) {
+        setError('Bookings API not found. Please contact support.');
+      } else {
+        setError(err.response?.data?.error || 'Failed to load bookings.');
+      }
     } finally {
       setLoading(false);
     }
@@ -39,7 +55,7 @@ function TravelerBookings() {
     } else {
       setFilteredBookings(
         bookings.filter(booking => 
-          booking.status.toUpperCase() === statusFilter.toUpperCase()
+          booking.status?.toUpperCase() === statusFilter.toUpperCase()
         )
       );
     }
@@ -65,7 +81,7 @@ function TravelerBookings() {
       alert('Booking cancelled successfully.');
     } catch (err) {
       console.error('Failed to cancel booking:', err);
-      alert('Failed to cancel booking. Please try again.');
+      alert(err.response?.data?.error || 'Failed to cancel booking. Please try again.');
     } finally {
       setCancellingId(null);
     }
@@ -74,13 +90,39 @@ function TravelerBookings() {
   // Get count by status
   const getStatusCount = (status) => {
     if (status === 'all') return bookings.length;
-    return bookings.filter(b => b.status.toUpperCase() === status.toUpperCase()).length;
+    return bookings.filter(b => b.status?.toUpperCase() === status.toUpperCase()).length;
   };
 
   if (loading) {
     return (
       <main className="container mt-5">
-        <p className="text-center">Loading your bookings...</p>
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading your bookings...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="container mt-5">
+        <div className="alert alert-danger" role="alert">
+          <h4 className="alert-heading">Error Loading Bookings</h4>
+          <p>{error}</p>
+          <hr />
+          <p className="mb-0">
+            <button className="btn btn-primary" onClick={fetchBookings}>
+              Try Again
+            </button>
+            {' '}
+            <Link to="/traveler/dashboard" className="btn btn-secondary">
+              Back to Search
+            </Link>
+          </p>
+        </div>
       </main>
     );
   }
@@ -149,8 +191,8 @@ function TravelerBookings() {
                   {/* Property Image */}
                   <div className="col-md-4">
                     <img
-                      src={booking.property.imageUrl || booking.property.image_url || 'https://via.placeholder.com/200x200?text=Property'}
-                      alt={`Image of ${booking.property.name || booking.property.title}`}
+                      src={booking.property?.imageUrl || booking.property?.image_url || 'https://via.placeholder.com/200x200?text=Property'}
+                      alt={`Image of ${booking.property?.name || booking.property?.title || 'Property'}`}
                       className="img-fluid rounded-start h-100"
                       style={{ objectFit: 'cover' }}
                     />
@@ -160,30 +202,30 @@ function TravelerBookings() {
                   <div className="col-md-8">
                     <div className="card-body d-flex flex-column h-100">
                       <h5 className="card-title">
-                        {booking.property.name || booking.property.title}
+                        {booking.property?.name || booking.property?.title || booking.property_name || 'Property'}
                       </h5>
                       <p className="card-text">
                         <small className="text-muted">
-                          <i className="bi bi-geo-alt"></i> {booking.property.location || booking.property.city}
+                          <i className="bi bi-geo-alt"></i> {booking.property?.location || booking.property?.city || booking.location || 'Location'}
                         </small>
                       </p>
                       <p className="card-text">
-                        <strong>Check-in:</strong> {booking.startDate || booking.start_date}<br />
-                        <strong>Check-out:</strong> {booking.endDate || booking.end_date}
+                        <strong>Check-in:</strong> {booking.startDate || booking.start_date || 'N/A'}<br />
+                        <strong>Check-out:</strong> {booking.endDate || booking.end_date || 'N/A'}
                       </p>
                       <p className="card-text">
-                        <strong>Guests:</strong> {booking.guests}
+                        <strong>Guests:</strong> {booking.guests || 'N/A'}
                       </p>
-                      {booking.totalPrice || booking.total_price ? (
+                      {(booking.totalPrice || booking.total_price) && (
                         <p className="card-text">
                           <strong>Total:</strong> ${booking.totalPrice || booking.total_price}
                         </p>
-                      ) : null}
+                      )}
                       
                       {/* Status Badge */}
                       <div className="mb-3">
                         <span className={`badge bg-${getStatusColor(booking.status)}`}>
-                          {booking.status}
+                          {booking.status || 'UNKNOWN'}
                         </span>
                       </div>
 
@@ -191,15 +233,15 @@ function TravelerBookings() {
                       <div className="mt-auto">
                         <div className="d-flex gap-2">
                           <Link 
-                            to={`/property/${booking.property.id}`}
+                            to={`/property/${booking.property?.id || booking.property_id}`}
                             className="btn btn-sm btn-outline-primary flex-grow-1"
                           >
                             View Property
                           </Link>
                           
                           {/* Cancel Button - Only show for PENDING or ACCEPTED bookings */}
-                          {(booking.status.toUpperCase() === 'PENDING' || 
-                            booking.status.toUpperCase() === 'ACCEPTED') && (
+                          {(booking.status?.toUpperCase() === 'PENDING' || 
+                            booking.status?.toUpperCase() === 'ACCEPTED') && (
                             <button
                               className="btn btn-sm btn-outline-danger"
                               onClick={() => handleCancelBooking(booking.id)}
@@ -222,19 +264,26 @@ function TravelerBookings() {
           ))}
         </div>
       )}
+      <AgentButton />
     </main>
   );
 }
 
 // Helper to style status badge
 function getStatusColor(status) {
+  if (!status) return 'secondary';
+  
   switch (status.toUpperCase()) {
     case 'ACCEPTED':
+    case 'CONFIRMED':
       return 'success';
     case 'PENDING':
       return 'warning';
     case 'CANCELLED':
+    case 'REJECTED':
       return 'danger';
+    case 'COMPLETED':
+      return 'info';
     default:
       return 'secondary';
   }
