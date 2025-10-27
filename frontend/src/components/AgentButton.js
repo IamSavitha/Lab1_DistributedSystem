@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import './AgentButton.css';
 
 const AgentButton = () => {
@@ -7,6 +8,10 @@ const AgentButton = () => {
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Get traveler info from Redux
+  const travelerInfo = useSelector((state) => state.traveler.travelerInfo);
+  const travelerId = travelerInfo?.id;
   
   // Travel context state
   const [location, setLocation] = useState('');
@@ -57,6 +62,7 @@ const AgentButton = () => {
         body: JSON.stringify({
           query: query,
           bookingContext: {
+            travelerId: travelerId, // 传递travelerId以获取历史记录
             location: location,
             dates: {
               startDate: startDate,
@@ -90,7 +96,7 @@ const AgentButton = () => {
     <>
       {!isOpen && (
         <button className="agent-button-fab" onClick={handleOpen} aria-label="Open AI Assistant">
-          <span className="agent-button-icon">🤖</span>
+          AI
         </button>
       )}
 
@@ -224,7 +230,7 @@ const AgentButton = () => {
 
                 {response.dayByDayPlan && response.dayByDayPlan.length > 0 && (
                   <div className="response-section">
-                    <h5>📅 Day-by-Day Itinerary</h5>
+                    <h5>Day-by-Day Itinerary</h5>
                     {response.dayByDayPlan.map((day, idx) => (
                       <div key={idx} className="day-card">
                         <h6>Day {day.day} - {day.date}</h6>
@@ -238,15 +244,15 @@ const AgentButton = () => {
 
                 {response.activities && response.activities.length > 0 && (
                   <div className="response-section">
-                    <h5>🎯 Recommended Activities</h5>
+                    <h5>Recommended Activities</h5>
                     <div className="activities-grid">
                       {response.activities.slice(0, 6).map((activity, idx) => (
                         <div key={idx} className="activity-card">
                           <h6>{activity.name}</h6>
                           <p>{activity.description}</p>
                           <div className="activity-meta">
-                            <span>⏱️ {activity.estimatedDuration}</span>
-                            <span>💰 {activity.cost}</span>
+                            <span>{activity.estimatedDuration}</span>
+                            <span>{activity.cost}</span>
                           </div>
                         </div>
                       ))}
@@ -256,7 +262,7 @@ const AgentButton = () => {
 
                 {response.restaurants && response.restaurants.length > 0 && (
                   <div className="response-section">
-                    <h5>🍽️ Restaurant Recommendations</h5>
+                    <h5>Restaurant Recommendations</h5>
                     <div className="restaurants-list">
                       {response.restaurants.slice(0, 5).map((restaurant, idx) => (
                         <div key={idx} className="restaurant-card">
@@ -278,7 +284,7 @@ const AgentButton = () => {
 
                 {response.packingChecklist && response.packingChecklist.length > 0 && (
                   <div className="response-section">
-                    <h5>🎒 Packing Checklist</h5>
+                    <h5>Packing Checklist</h5>
                     <ul className="packing-list">
                       {response.packingChecklist.map((item, idx) => (
                         <li key={idx}>{item}</li>
@@ -289,7 +295,7 @@ const AgentButton = () => {
 
                 {response.localContext && response.localContext.weather && (
                   <div className="response-section">
-                    <h5>☀️ Weather & Local Info</h5>
+                    <h5>Weather & Local Info</h5>
                     <div className="weather-info">
                       <p>{response.localContext.weather.description || 'Check local weather forecast'}</p>
                     </div>

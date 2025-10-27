@@ -43,6 +43,7 @@ class BookingDates(BaseModel):
 
 
 class BookingContext(BaseModel):
+    travelerId: Optional[int] = Field(None, description="Traveler ID for fetching history")
     bookingId: Optional[int] = Field(None, description="Existing booking ID")
     propertyId: Optional[int] = Field(None, description="Property ID")
     location: Optional[str] = Field(None, description="Destination city")

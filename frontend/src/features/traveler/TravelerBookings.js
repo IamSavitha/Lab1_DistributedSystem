@@ -3,6 +3,26 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import AgentButton from '../../components/AgentButton';
 
+// Helper function to format date
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    // Parse ISO date string and format as YYYY-MM-DD
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    // If date string is already in YYYY-MM-DD format, return as is
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateString;
+    }
+    return dateString;
+  }
+};
+
 function TravelerBookings() {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
@@ -32,6 +52,18 @@ function TravelerBookings() {
       // Handle different response formats
       const bookingsList = res.data.bookings || res.data;
       console.log('Bookings list:', bookingsList);
+      
+      // Debug: log each booking status
+      if (Array.isArray(bookingsList)) {
+        bookingsList.forEach((booking, idx) => {
+          console.log(`Booking ${idx + 1}:`, {
+            id: booking.id,
+            status: booking.status,
+            property: booking.property?.name || booking.property_name,
+            startDate: booking.startDate || booking.start_date
+          });
+        });
+      }
       
       setBookings(Array.isArray(bookingsList) ? bookingsList : []);
     } catch (err) {
@@ -191,10 +223,14 @@ function TravelerBookings() {
                   {/* Property Image */}
                   <div className="col-md-4">
                     <img
-                      src={booking.property?.imageUrl || booking.property?.image_url || 'https://via.placeholder.com/200x200?text=Property'}
+                      src={booking.property?.imageUrl || booking.property?.image_url || 'https://placehold.co/200x200/e0e0e0/666666?text=Property'}
                       alt={`Image of ${booking.property?.name || booking.property?.title || 'Property'}`}
                       className="img-fluid rounded-start h-100"
                       style={{ objectFit: 'cover' }}
+                      onError={(e) => {
+                        // Fallback to a simple gray box if image fails to load
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext fill="%23666666" font-family="Arial" font-size="16" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
+                      }}
                     />
                   </div>
                   
@@ -210,8 +246,8 @@ function TravelerBookings() {
                         </small>
                       </p>
                       <p className="card-text">
-                        <strong>Check-in:</strong> {booking.startDate || booking.start_date || 'N/A'}<br />
-                        <strong>Check-out:</strong> {booking.endDate || booking.end_date || 'N/A'}
+                        <strong>Check-in:</strong> {formatDate(booking.startDate || booking.start_date)}<br />
+                        <strong>Check-out:</strong> {formatDate(booking.endDate || booking.end_date)}
                       </p>
                       <p className="card-text">
                         <strong>Guests:</strong> {booking.guests || 'N/A'}

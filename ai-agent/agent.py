@@ -1,5 +1,6 @@
 """
 LangChain AI Agent for Travel Planning with AI Preference Inference
+Modified to use travelerId directly for fetching booking history
 """
 
 import os
@@ -33,12 +34,12 @@ llm = ChatOpenAI(
 )
 
 
-def get_user_booking_history(booking_id: int) -> list:
+def get_user_booking_history(traveler_id: int) -> list:
     """
-    Get user's booking history from database
+    Get user's booking history from database using traveler_id
     
     Args:
-        booking_id: Current booking ID to find the user
+        traveler_id: The traveler ID to get history for
         
     Returns:
         List of previous bookings for this user
@@ -51,40 +52,29 @@ def get_user_booking_history(booking_id: int) -> list:
             port=int(os.getenv('DB_PORT', 3306)),
             user=os.getenv('DB_USER', 'root'),
             password=os.getenv('DB_PASSWORD', ''),
-            database=os.getenv('DB_NAME', 'travel_db')
+            database=os.getenv('DB_NAME', 'airbnb_db')
         )
         
         cursor = conn.cursor(dictionary=True)
         
-        # Get traveler_id from current booking
-        cursor.execute("""
-            SELECT traveler_id FROM bookings WHERE id = %s
-        """, (booking_id,))
-        
-        current_booking = cursor.fetchone()
-        if not current_booking:
-            cursor.close()
-            conn.close()
-            return []
-        
-        traveler_id = current_booking['traveler_id']
-        
-        # Get user's booking history
+        # Get user's booking history with property location info
         cursor.execute("""
             SELECT 
                 b.id,
-                b.city as location,
-                b.check_in_date,
-                b.check_out_date,
+                COALESCE(p.city, p.location) as location,
+                b.start_date as check_in_date,
+                b.end_date as check_out_date,
                 b.guests,
                 b.status,
-                DATEDIFF(b.check_out_date, b.check_in_date) as nights
+                DATEDIFF(b.end_date, b.start_date) as nights,
+                p.type as property_type
             FROM bookings b
+            JOIN properties p ON b.property_id = p.id
             WHERE b.traveler_id = %s 
-            AND b.id != %s
+            AND b.status IN ('ACCEPTED', 'COMPLETED', 'CANCELLED')
             ORDER BY b.created_at DESC
             LIMIT 10
-        """, (traveler_id, booking_id))
+        """, (traveler_id,))
         
         history = cursor.fetchall()
         
@@ -96,6 +86,8 @@ def get_user_booking_history(booking_id: int) -> list:
         
         cursor.close()
         conn.close()
+        
+        print(f"✓ Found {len(history)} historical bookings for traveler {traveler_id}")
         return history
         
     except Exception as e:
@@ -228,7 +220,7 @@ You are a travel preferences analyzer. Based on the user's booking history and c
    - Beach destinations -> "beaches", "relaxation"
    - Family patterns (3-4+ guests) -> "family-friendly"
    - Extract explicit interests from query
-
+   
 3. **Dietary**: Extract from query if mentioned (vegetarian, vegan, etc.)
 
 4. **Mobility**: Extract from query if mentioned (wheelchair, elderly, etc.)
@@ -369,15 +361,20 @@ def generate_day_by_day_plan(
         
         prompt = DAY_BY_DAY_PROMPT.format(
             location=location,
-            num_days=num_days,
             start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+            nights=num_days - 1,
             guests=guests,
             party_type=party_type,
             activities=activities_summary,
+            restaurants=json.dumps([r.get('name', 'Restaurant') for r in restaurants[:10]]),
             weather=json.dumps(weather, indent=2),
+            events=json.dumps([e.get('title', 'Event') for e in events[:5]]),
             user_query=user_query,
             budget=preferences.get("budget", "medium"),
-            interests=", ".join(preferences.get("interests", []))
+            interests=", ".join(preferences.get("interests", [])),
+            dietary_filters=", ".join(preferences.get("dietaryFilters", [])),
+            mobility_needs=", ".join(preferences.get("mobilityNeeds", []))
         )
         
         messages = [
@@ -430,6 +427,8 @@ def generate_packing_checklist(
         
         prompt = PACKING_CHECKLIST_PROMPT.format(
             location=location,
+            start_date=dates.get("startDate", ""),
+            end_date=dates.get("endDate", ""),
             weather=json.dumps(weather, indent=2),
             activities=activities_summary,
             party_type=party_type,
@@ -489,12 +488,13 @@ def create_travel_plan(
     
     Args:
         query: Free-text user query
-        booking_context: Booking details (location, dates, partyType, bookingId, propertyId)
+        booking_context: Booking details (travelerId, location, dates, partyType, guests)
         preferences: User preferences (budget, interests, mobilityNeeds, dietaryFilters)
         
     Returns:
         Complete travel plan with all components
     """
+    print("=" * 70)
     print("Starting travel plan generation...")
     print(f"Location: {booking_context.get('location')}")
     print(f"Dates: {booking_context.get('dates')}")
@@ -505,26 +505,13 @@ def create_travel_plan(
     party_type = booking_context.get("partyType", "solo")
     guests = booking_context.get("guests", 1)
     
-    # Get booking details from database if bookingId provided
-    booking_id = booking_context.get("bookingId")
+    # Get traveler's booking history if travelerId provided
+    traveler_id = booking_context.get("travelerId")
     booking_history = []
     
-    if booking_id:
-        print(f"Fetching booking details from database: ID {booking_id}")
-        booking_details = database.get_booking_by_id(booking_id)
-        if booking_details:
-            location = booking_details.get("city", location)
-            dates = {
-                "startDate": str(booking_details.get("check_in_date", "")),
-                "endDate": str(booking_details.get("check_out_date", ""))
-            }
-            guests = booking_details.get("guests", guests)
-            print(f"Retrieved booking: {location}, {dates}, {guests} guests")
-            
-            # Get user's booking history
-            print("Fetching user booking history...")
-            booking_history = get_user_booking_history(booking_id)
-            print(f"Found {len(booking_history)} previous bookings")
+    if traveler_id:
+        print(f"Using traveler ID: {traveler_id} to fetch booking history")
+        booking_history = get_user_booking_history(traveler_id)
     
     # Check if we need to infer preferences
     needs_inference = (
@@ -538,7 +525,7 @@ def create_travel_plan(
         print("Starting AI preference inference...")
         print("Reason: preferences are empty or incomplete")
         
-        # Use AI to infer preferences
+        # Use AI to infer preferences from history and query
         inferred_prefs = infer_preferences_from_history_and_query(
             booking_history,
             query,
@@ -634,4 +621,5 @@ def create_travel_plan(
     }
     
     print("Travel plan generated successfully!")
+    print("=" * 70)
     return response
