@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
-import api from '../../services/api';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { signupTraveler } from './travelerSlice';
 
 function TravelerSignup() {
-  // Local state for form inputs
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { loading } = useSelector((state) => state.traveler);
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Handle signup form submission
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/traveler/signup', {
-        name,
-        email,
-        password,
-      });
+      await dispatch(signupTraveler({ 
+        userData: { name, email, password },
+        navigate 
+      })).unwrap();
+      
       alert('Signup successful. Please log in.');
-      // Optionally redirect to login page
+      
+      // Force navigation after successful signup
+      navigate('/traveler/login');
     } catch (error) {
       console.error('Signup error:', error);
       alert('Signup failed. Please check your information.');
@@ -69,8 +75,12 @@ function TravelerSignup() {
                 autoComplete="new-password"
               />
             </div>
-            <button type="submit" className="btn btn-success w-100">
-              Sign Up
+            <button 
+              type="submit" 
+              className="btn btn-success w-100"
+              disabled={loading}
+            >
+              {loading ? 'Signing up...' : 'Sign Up'}
             </button>
           </form>
         </div>

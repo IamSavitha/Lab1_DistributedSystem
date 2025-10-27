@@ -20,8 +20,10 @@ function OwnerBookings() {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/owner/bookings');
-      setBookings(res.data);
+      // 修复：使用正确的API路径
+      const res = await api.get('/bookings/owner');
+      // 修复：从响应中提取bookings数组
+      setBookings(res.data.bookings || []);
     } catch (err) {
       console.error('Failed to load bookings:', err);
       alert('Failed to load bookings.');
@@ -51,7 +53,8 @@ function OwnerBookings() {
 
     setProcessingId(bookingId);
     try {
-      await api.put(`/bookings/${bookingId}/accept`);
+      // 修复：使用正确的API路径 /bookings/owner/:id/accept
+      await api.put(`/bookings/owner/${bookingId}/accept`);
       
       // Update booking status in local state
       setBookings(bookings.map(booking => 
@@ -77,7 +80,8 @@ function OwnerBookings() {
 
     setProcessingId(bookingId);
     try {
-      await api.put(`/bookings/${bookingId}/cancel`);
+      // 修复：使用正确的API路径 /bookings/owner/:id/cancel
+      await api.put(`/bookings/owner/${bookingId}/cancel`);
       
       // Update booking status in local state
       setBookings(bookings.map(booking => 
@@ -179,48 +183,48 @@ function OwnerBookings() {
             <tbody>
               {filteredBookings.map((booking) => (
                 <tr key={booking.id}>
-                  {/* Property */}
+                  {/* Property - 修复：使用正确的数据结构 */}
                   <td>
                     <div className="d-flex align-items-center">
-                      {booking.property.imageUrl || booking.property.image_url ? (
+                      {booking.property?.image_url && (
                         <img 
-                          src={booking.property.imageUrl || booking.property.image_url}
-                          alt={booking.property.name || booking.property.title}
+                          src={booking.property.image_url}
+                          alt={booking.property.name}
                           className="rounded me-2"
                           style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                         />
-                      ) : null}
+                      )}
                       <div>
-                        <strong>{booking.property.name || booking.property.title}</strong>
+                        <strong>{booking.property?.name || 'N/A'}</strong>
                         <br />
                         <small className="text-muted">
-                          {booking.property.location || booking.property.city}
+                          {booking.property?.location || 'N/A'}
                         </small>
                       </div>
                     </div>
                   </td>
                   
-                  {/* Traveler */}
+                  {/* Traveler - 修复：使用正确的数据结构 */}
                   <td>
-                    <strong>{booking.traveler.name}</strong>
+                    <strong>{booking.traveler?.name || 'N/A'}</strong>
                     <br />
-                    <small className="text-muted">{booking.traveler.email}</small>
+                    <small className="text-muted">{booking.traveler?.email || 'N/A'}</small>
                   </td>
                   
                   {/* Check-in */}
-                  <td>{booking.checkInDate || booking.start_date || booking.startDate}</td>
+                  <td>{booking.startDate || booking.start_date || 'N/A'}</td>
                   
                   {/* Check-out */}
-                  <td>{booking.checkOutDate || booking.end_date || booking.endDate}</td>
+                  <td>{booking.endDate || booking.end_date || 'N/A'}</td>
                   
                   {/* Guests */}
-                  <td>{booking.guests}</td>
+                  <td>{booking.guests || 'N/A'}</td>
                   
                   {/* Total Price */}
                   <td>
                     {booking.totalPrice || booking.total_price 
                       ? `$${booking.totalPrice || booking.total_price}`
-                      : '-'
+                      : 'N/A'
                     }
                   </td>
                   

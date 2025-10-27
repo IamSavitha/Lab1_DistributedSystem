@@ -21,18 +21,20 @@ CREATE TABLE IF NOT EXISTS travelers (
   INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Owners Table
+-- Owners Table (添加了 location 字段)
 CREATE TABLE IF NOT EXISTS owners (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
+  location VARCHAR(255) DEFAULT NULL COMMENT 'City and state where owner manages properties',
   password VARCHAR(255) NOT NULL COMMENT 'bcrypt hashed password',
   phone VARCHAR(50),
   profile_picture TEXT,
   about TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_email (email)
+  INDEX idx_email (email),
+  INDEX idx_location (location)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Properties Table
@@ -94,4 +96,4 @@ CREATE TABLE IF NOT EXISTS favorites (
   FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
   UNIQUE KEY unique_favorite (traveler_id, property_id),
   INDEX idx_traveler (traveler_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

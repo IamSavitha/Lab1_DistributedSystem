@@ -15,16 +15,26 @@ function TravelerDashboard() {
   // Handle property search
   const handleSearch = async (e) => {
     e.preventDefault();
+    console.log('🔍 Search button clicked!');
+    console.log('Search params:', { location, startDate, endDate, guests });
+    
     setLoading(true);
     setSearched(true);
     try {
+      console.log('Sending request to /properties/search...');
       const res = await api.get('/properties/search', {
         params: { location, startDate, endDate, guests },
       });
-      setResults(res.data);
+      console.log('✅ Search results received:', res.data);
+      
+      // Backend returns { properties: [...] } or just [...]
+      const propertyList = res.data.properties || res.data;
+      console.log('Setting results:', propertyList);
+      setResults(propertyList);
     } catch (err) {
-      console.error('Search failed:', err);
-      alert('Search failed. Please try again.');
+      console.error('❌ Search failed:', err);
+      console.error('Error response:', err.response?.data);
+      alert('Search failed: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -56,6 +66,7 @@ function TravelerDashboard() {
             id="startDate"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            min={new Date().toISOString().split('T')[0]}
             required
           />
         </div>
@@ -67,8 +78,8 @@ function TravelerDashboard() {
             id="endDate"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
+            min={startDate || new Date().toISOString().split('T')[0]}
             required
-            min={startDate} // End date cannot be before start date
           />
         </div>
         <div className="col-md-2">
@@ -93,7 +104,12 @@ function TravelerDashboard() {
       {/* Search Results */}
       <section>
         {loading ? (
-          <p className="text-center text-muted">Searching for properties...</p>
+          <div className="text-center py-5">
+            <div className="spinner-border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-2 text-muted">Searching for properties...</p>
+          </div>
         ) : searched && results.length > 0 ? (
           <>
             <h4 className="mb-3">Found {results.length} {results.length === 1 ? 'property' : 'properties'}</h4>
@@ -102,20 +118,25 @@ function TravelerDashboard() {
                 <div className="col-md-4 mb-4" key={property.id}>
                   <div className="card h-100 shadow-sm">
                     <img
-                      src={property.imageUrl || 'https://via.placeholder.com/300x200?text=Property+Image'}
+                      src={property.imageUrl || property.image_url || 'https://via.placeholder.com/300x200?text=Property+Image'}
                       className="card-img-top"
-                      alt={`Image of ${property.name}`}
+                      alt={`Image of ${property.name || property.title}`}
                       style={{ height: '200px', objectFit: 'cover' }}
                     />
                     <div className="card-body d-flex flex-column">
-                      <h5 className="card-title">{property.name}</h5>
+                      <h5 className="card-title">{property.name || property.title}</h5>
+                      <p className="card-text text-muted">
+                        <i className="bi bi-geo-alt"></i> {property.location || property.city}
+                      </p>
                       <p className="card-text">
                         {property.type} · {property.bedrooms} BR · {property.bathrooms} BA
                       </p>
                       <p className="card-text">
                         <span className="text-muted">Max Guests: {property.max_guests || property.maxGuests}</span>
                       </p>
-                      <p className="card-text fw-bold text-primary">${property.price_per_night || property.price} / night</p>
+                      <p className="card-text fw-bold text-primary">
+                        ${property.price_per_night || property.price} / night
+                      </p>
                       
                       {/* Navigation to Property Details */}
                       <Link 
@@ -132,11 +153,19 @@ function TravelerDashboard() {
           </>
         ) : searched && results.length === 0 ? (
           <div className="text-center py-5">
-            <p className="text-muted">No properties found. Try adjusting your filters.</p>
+            <div className="alert alert-info" role="alert">
+              <h5>No properties found</h5>
+              <p className="mb-0">Try adjusting your search filters or location.</p>
+            </div>
           </div>
         ) : (
           <div className="text-center py-5">
-            <p className="text-muted">Start your search to find amazing properties!</p>
+            <div className="card border-0">
+              <div className="card-body">
+                <i className="bi bi-search" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+                <p className="text-muted mt-3">Start your search to find amazing properties!</p>
+              </div>
+            </div>
           </div>
         )}
       </section>

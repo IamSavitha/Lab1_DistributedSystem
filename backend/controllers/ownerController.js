@@ -5,12 +5,13 @@ const { isValidEmail } = require('../utils/validation');
 // Owner Signup
 const signup = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, location } = req.body;  // 添加 location
 
-    if (!name || !email || !password) {
+    // 验证必填字段
+    if (!name || !email || !password || !location) {
       return res.status(400).json({
         success: false,
-        message: 'Name, email, and password are required'
+        message: 'Name, email, password, and location are required'  // 更新错误信息
       });
     }
 
@@ -42,13 +43,15 @@ const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 修复：插入时包含 location
     const [result] = await db.query(
-      'INSERT INTO owners (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
+      'INSERT INTO owners (name, email, location, password) VALUES (?, ?, ?, ?)',
+      [name, email, location, hashedPassword]
     );
 
+    // 修复：返回时包含 location
     const [owners] = await db.query(
-      'SELECT id, name, email, created_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, created_at FROM owners WHERE id = ?',
       [result.insertId]
     );
 
@@ -145,8 +148,9 @@ const getProfile = async (req, res) => {
   try {
     const ownerId = req.session.ownerId;
 
+    // 修复：查询时包含 location
     const [owners] = await db.query(
-      'SELECT id, name, email, phone, profile_picture, about, created_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, phone, profile_picture, about, created_at FROM owners WHERE id = ?',
       [ownerId]
     );
 
@@ -175,7 +179,7 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const ownerId = req.session.ownerId;
-    const { name, phone, profilePicture, about } = req.body;
+    const { name, phone, profilePicture, about, location } = req.body;  // 添加 location
 
     const updates = [];
     const values = [];
@@ -196,6 +200,11 @@ const updateProfile = async (req, res) => {
       updates.push('about = ?');
       values.push(about);
     }
+    // 添加：支持更新 location
+    if (location !== undefined) {
+      updates.push('location = ?');
+      values.push(location);
+    }
 
     if (updates.length === 0) {
       return res.status(400).json({
@@ -211,8 +220,9 @@ const updateProfile = async (req, res) => {
       values
     );
 
+    // 修复：返回时包含 location
     const [owners] = await db.query(
-      'SELECT id, name, email, phone, profile_picture, about, created_at, updated_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, phone, profile_picture, about, created_at, updated_at FROM owners WHERE id = ?',
       [ownerId]
     );
 

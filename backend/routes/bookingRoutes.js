@@ -6,6 +6,7 @@ const { requireTravelerAuth, requireOwnerAuth } = require('../middleware/auth');
 // Traveler routes
 router.post('/request', requireTravelerAuth, bookingController.createBooking);
 router.get('/traveler', requireTravelerAuth, bookingController.getTravelerBookings);
+router.get('/traveler/history', requireTravelerAuth, bookingController.getTravelerHistory);  // 新增路由
 router.put('/:id/cancel', requireTravelerAuth, bookingController.cancelBookingTraveler);
 
 // Owner routes
