@@ -1,21 +1,37 @@
+// backend/routes/ownerPropertyRoutes.js
 const express = require('express');
 const router = express.Router();
-const propertyController = require('../controllers/propertyController');
+const {
+  getOwnerProperties,
+  createProperty,
+  updateProperty,
+  deleteProperty
+} = require('../controllers/propertyController');
+
+
+
 const { requireOwnerAuth } = require('../middleware/auth');
 
-// All routes here require owner authentication
-// Base path: /api/owner/properties
+// All routes under /api/owner/properties require owner authentication
+router.use(requireOwnerAuth);
 
-// Get all owner's properties
-router.get('/', requireOwnerAuth, propertyController.getOwnerProperties);
+// GET all properties owned by the logged-in owner
+router.get('/', getOwnerProperties);
 
-// Create new property
-router.post('/', requireOwnerAuth, propertyController.createProperty);
+// CREATE a new property
+router.post('/', createProperty);
 
-// Update property
-router.put('/:id', requireOwnerAuth, propertyController.updateProperty);
+// UPDATE an existing property
+router.put('/:id', updateProperty);
 
-// Delete property
-router.delete('/:id', requireOwnerAuth, propertyController.deleteProperty);
+// DELETE a property
+router.delete('/:id', deleteProperty);
+// backend/routes/ownerPropertyRoutes.js
+
+router.use(requireOwnerAuth);
+router.get('/', getOwnerProperties);
+router.post('/', createProperty);
+router.put('/:id', updateProperty);
+router.delete('/:id', deleteProperty);
 
 module.exports = router;
