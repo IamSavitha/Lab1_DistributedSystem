@@ -20,6 +20,7 @@ const requireTravelerAuth = (req, res, next) => {
     next();
   };
   
+  
   module.exports = {
     requireTravelerAuth,
     requireOwnerAuth
