@@ -12,7 +12,7 @@ It provides routes and controllers for **Travelers** and **Owners** to manage au
 - dotenv — Environment configuration  
 - multer — File uploads (profile/property images)  
 
-## 📁 Project Setup
+## Project Setup
 ### 1️. Initialize Node Project
 ```bash
 cd backend
