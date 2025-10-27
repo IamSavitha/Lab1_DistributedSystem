@@ -14,6 +14,22 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const ownerPropertyRoutes = require('./routes/ownerPropertyRoutes');
 
 
+// swaggerUi
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+
+const swaggerSpec = swaggerJsdoc({
+  definition: {
+    openapi: '3.0.0',
+    info: { title: 'Airbnb Prototype API', version: '1.0.0' },
+    servers: [{ url: 'http://localhost:4000' }]
+  },
+  apis: ['./routes/*.js'], // add JSDoc comments in route files
+});
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+
 // Middleware - ORDER MATTERS!
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
