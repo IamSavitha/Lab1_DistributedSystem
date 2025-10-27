@@ -16,7 +16,7 @@ function Navbar() {
   const isTravelerLoggedIn = useSelector((state) => state.traveler.isLoggedIn);
   const isOwnerLoggedIn = useSelector((state) => state.owner.isLoggedIn);
 
-  // Determine current user type
+  // Determine current user type - ensure mutual exclusivity
   const userType = isTravelerLoggedIn ? 'traveler' : isOwnerLoggedIn ? 'owner' : null;
 
   // Handle logout
@@ -84,8 +84,8 @@ function Navbar() {
 
         {/* Navigation Links */}
         <div className="collapse navbar-collapse" id="navbarNav">
-          {/* Traveler Navigation */}
-          {isTravelerLoggedIn && (
+          {/* Traveler Navigation - ONLY show if traveler logged in AND owner NOT logged in */}
+          {userType === 'traveler' && (
             <ul className="navbar-nav me-auto">
               <li className="nav-item">
                 <Link className="nav-link" to="/traveler/dashboard">
@@ -110,8 +110,8 @@ function Navbar() {
             </ul>
           )}
 
-          {/* Owner Navigation */}
-          {isOwnerLoggedIn && (
+          {/* Owner Navigation - ONLY show if owner logged in AND traveler NOT logged in */}
+          {userType === 'owner' && (
             <ul className="navbar-nav me-auto">
               <li className="nav-item">
                 <Link className="nav-link" to="/owner/dashboard">
@@ -137,7 +137,7 @@ function Navbar() {
           )}
 
           {/* User Info & Logout */}
-          {(isTravelerLoggedIn || isOwnerLoggedIn) && (
+          {userType && (
             <ul className="navbar-nav ms-auto">
               <li className="nav-item dropdown">
                 <a

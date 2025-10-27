@@ -72,10 +72,13 @@ function TravelerHistory() {
                 <div className="row g-0">
                   <div className="col-md-4">
                     <img
-                      src={booking.property?.imageUrl || booking.property?.image_url || 'https://via.placeholder.com/200x200?text=Property'}
+                      src={booking.property?.imageUrl || booking.property?.image_url || 'https://placehold.co/200x200/e0e0e0/666666?text=Property'}
                       alt={`Image of ${booking.property?.name || 'Property'}`}
                       className="img-fluid rounded-start h-100"
                       style={{ objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext fill="%23666666" font-family="Arial" font-size="16" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
+                      }}
                     />
                   </div>
                   <div className="col-md-8">
