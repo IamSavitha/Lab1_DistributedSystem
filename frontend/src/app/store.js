@@ -6,33 +6,33 @@ import { combineReducers } from 'redux';
 import travelerReducer from '../features/traveler/travelerSlice';
 import ownerReducer from '../features/owner/OwnerSlice';
 
-// Redux Persist 配置
+// Redux Persist configuration
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['traveler', 'owner'], // 只持久化 traveler 和 owner 状态
+  whitelist: ['traveler', 'owner'], // Only persist traveler and owner state
 };
 
-// 合并所有 reducers
+// Combine all reducers
 const rootReducer = combineReducers({
   traveler: travelerReducer,
   owner: ownerReducer,
 });
 
-// 创建持久化的 reducer
+// Create persisted reducer
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-// 配置 store
+// Configure store
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // 忽略 redux-persist 的 action
+        // Ignore redux-persist actions
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
     }),
 });
 
-// 创建 persistor
+// Create persistor
 export const persistor = persistStore(store);

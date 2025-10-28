@@ -20,9 +20,9 @@ function OwnerBookings() {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      // 修复：使用正确的API路径
+      // Use the correct API path
       const res = await api.get('/bookings/owner');
-      // 修复：从响应中提取bookings数组
+      // Extract bookings array from response
       setBookings(res.data.bookings || []);
     } catch (err) {
       console.error('Failed to load bookings:', err);
@@ -53,7 +53,7 @@ function OwnerBookings() {
 
     setProcessingId(bookingId);
     try {
-      // 修复：使用正确的API路径 /bookings/owner/:id/accept
+      // Use correct API path /bookings/owner/:id/accept
       await api.put(`/bookings/owner/${bookingId}/accept`);
       
       // Update booking status in local state
@@ -80,7 +80,7 @@ function OwnerBookings() {
 
     setProcessingId(bookingId);
     try {
-      // 修复：使用正确的API路径 /bookings/owner/:id/cancel
+      // Use correct API path /bookings/owner/:id/cancel
       await api.put(`/bookings/owner/${bookingId}/cancel`);
       
       // Update booking status in local state
@@ -183,7 +183,7 @@ function OwnerBookings() {
             <tbody>
               {filteredBookings.map((booking) => (
                 <tr key={booking.id}>
-                  {/* Property - 修复：使用正确的数据结构 */}
+                  {/* Property - using correct data structure */}
                   <td>
                     <div className="d-flex align-items-center">
                       {booking.property?.image_url && (
@@ -204,7 +204,7 @@ function OwnerBookings() {
                     </div>
                   </td>
                   
-                  {/* Traveler - 修复：使用正确的数据结构 */}
+                  {/* Traveler - using correct data structure */}
                   <td>
                     <strong>{booking.traveler?.name || 'N/A'}</strong>
                     <br />
@@ -248,7 +248,7 @@ function OwnerBookings() {
                           {processingId === booking.id ? (
                             <span className="spinner-border spinner-border-sm" role="status"></span>
                           ) : (
-                            '✓ Accept'
+                            'Accept'
                           )}
                         </button>
                         <button
@@ -260,7 +260,7 @@ function OwnerBookings() {
                           {processingId === booking.id ? (
                             <span className="spinner-border spinner-border-sm" role="status"></span>
                           ) : (
-                            '✗ Cancel'
+                            'Cancel'
                           )}
                         </button>
                       </div>
