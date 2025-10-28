@@ -1,0 +1,663 @@
+{
+	"info": {
+		"_postman_id": "745051fe-033d-49ae-8b78-52a5b812600a",
+		"name": "Airbnb Backend",
+		"description": "Postman collection for Homework 6 Node/Express/Mongoose Tasks API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48857796",
+		"_collection_link": "https://savitha-vijayarangan-897569.postman.co/workspace/2688370b-a443-407d-85dd-11363dcdc989/collection/48857796-745051fe-033d-49ae-8b78-52a5b812600a?source=collection_link"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"savi\",\n  \"email\": \"savi@gmail.com\",\n  \"password\": \"password123\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Traveler SignUp",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Savitha\",\n  \"email\": \"savitha@example.com\",\n  \"password\": \"test123\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/traveler/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"traveler",
+						"signup"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Traveler Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"savi@gmail.com\",\n  \"password\": \"password123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/traveler/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"traveler",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get profile",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/traveler/profile",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"traveler",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update profile",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"phone\": \"9876543210\",\n  \"city\": \"San Jose\",\n  \"state\": \"CA\",\n  \"country\": \"USA\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/traveler/profile",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"traveler",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update profile picture",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": "/Users/savithavijayarangan/Documents/Semester2/Distributed_Systems/girl.png"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/traveler/upload-image",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"traveler",
+						"upload-image"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "travelers logout",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}api/properties/search?location=San&guests=2",
+					"host": [
+						"{{baseUrl}}api"
+					],
+					"path": [
+						"properties",
+						"search"
+					],
+					"query": [
+						{
+							"key": "location",
+							"value": "San"
+						},
+						{
+							"key": "guests",
+							"value": "2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public search",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/properties/search?location=San&guests=2",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"properties",
+						"search"
+					],
+					"query": [
+						{
+							"key": "location",
+							"value": "San"
+						},
+						{
+							"key": "guests",
+							"value": "2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get by id",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/properties/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"properties",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add Favorite",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"propertyId\":1 }\n    ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/favorites",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"favorites"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Favorite",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/favorites/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"favorites",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "view all favorite",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/favorites",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"favorites"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "check favorite",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/favorites/check/3",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"favorites",
+						"check",
+						"3"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Booking",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"propertyId\": 4,\n  \"startDate\": \"2025-11-01\",\n  \"endDate\": \"2025-11-05\",\n  \"guests\": 2\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/bookings/request",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"bookings",
+						"request"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Bookings",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/bookings/traveler",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"bookings",
+						"traveler"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete request- traveler",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/bookings/3/cancel",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"bookings",
+						"3",
+						"cancel"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Owner Signup",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Ram\",\n  \"email\": \"Ram@mail.com\",\n  \"password\": \"test123\"\n}\n"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/owner/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"owner",
+						"signup"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Owner Login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"ram@mail.com\",\n  \"password\": \"test123\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/owner/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"owner",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "add property - owner",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"VV Villa\",\n  \"type\": \"House\",\n  \"description\": \"Beautiful villa with pool\",\n  \"address\": \"13 Palm St\",\n  \"city\": \"San Jose\",\n  \"state\": \"CA\",\n  \"country\": \"USA\",\n  \"price\": 200,\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"maxGuests\": 5\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/owner/properties",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"owner",
+						"properties"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "view property - owner",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/owner/properties",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"owner",
+						"properties"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update property - owner",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"price\": 300 }\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/owner/properties/5",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"owner",
+						"properties",
+						"5"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete property - owner",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/owner/properties/5",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"owner",
+						"properties",
+						"5"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Owner Bookings",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/bookings/owner",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"bookings",
+						"owner"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Accept booking",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/bookings/owner/4/accept",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"bookings",
+						"owner",
+						"4",
+						"accept"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cancel Booking",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/bookings/owner/4/cancel",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"bookings",
+						"owner",
+						"4",
+						"cancel"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Owner LogOut",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"tasks",
+						"{{taskId}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000"
+		},
+		{
+			"key": "taskId",
+			"value": "<paste-an-id-here>"
+		}
+	]
+}
