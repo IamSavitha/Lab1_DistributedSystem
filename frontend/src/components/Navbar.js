@@ -66,7 +66,7 @@ function Navbar() {
       <div className="container-fluid">
         {/* Brand */}
         <Link className="navbar-brand fw-bold" to={userType === 'traveler' ? '/traveler/dashboard' : '/owner/dashboard'}>
-          Airbnb Clone
+          Airbnb
         </Link>
 
         {/* Toggler for mobile */}
@@ -126,11 +126,6 @@ function Navbar() {
               <li className="nav-item">
                 <Link className="nav-link" to="/owner/bookings">
                   Bookings
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/owner/analytics">
-                  Analytics
                 </Link>
               </li>
             </ul>
