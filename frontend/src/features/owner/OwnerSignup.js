@@ -8,7 +8,7 @@ function OwnerSignup() {
     email: '',
     password: '',
     confirmPassword: '',
-    location: '',  // 添加 location
+    location: '',
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ function OwnerSignup() {
         name: form.name,
         email: form.email,
         password: form.password,
-        location: form.location,  // 发送 location
+        location: form.location,
       });
       
       if (res.data.success) {

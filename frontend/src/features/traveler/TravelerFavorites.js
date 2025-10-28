@@ -15,11 +15,11 @@ function TravelerFavorites() {
   const fetchFavorites = async () => {
     setLoading(true);
     try {
-      // 修复：改为 /favorites 而不是 /traveler/favorites
+      // Changed endpoint to /favorites instead of /traveler/favorites
       const res = await api.get('/favorites');
       console.log('Favorites response:', res.data);
       
-      // 根据后端返回的数据结构解析
+      // Parse based on backend response structure
       const favoritesList = res.data.favorites || res.data;
       setFavorites(Array.isArray(favoritesList) ? favoritesList : []);
     } catch (err) {
@@ -95,7 +95,7 @@ function TravelerFavorites() {
                     {removingId === property.id ? (
                       <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     ) : (
-                      '❤️'
+                      <span style={{ fontSize: '20px' }}>♥</span>
                     )}
                   </button>
 

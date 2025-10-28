@@ -15,7 +15,7 @@ function TravelerDashboard() {
   // Handle property search
   const handleSearch = async (e) => {
     e.preventDefault();
-    console.log('🔍 Search button clicked!');
+    console.log('Search button clicked!');
     console.log('Search params:', { location, startDate, endDate, guests });
     
     setLoading(true);
@@ -25,14 +25,14 @@ function TravelerDashboard() {
       const res = await api.get('/properties/search', {
         params: { location, startDate, endDate, guests },
       });
-      console.log('✅ Search results received:', res.data);
+      console.log('Search results received:', res.data);
       
       // Backend returns { properties: [...] } or just [...]
       const propertyList = res.data.properties || res.data;
       console.log('Setting results:', propertyList);
       setResults(propertyList);
     } catch (err) {
-      console.error('❌ Search failed:', err);
+      console.error('Search failed:', err);
       console.error('Error response:', err.response?.data);
       alert('Search failed: ' + (err.response?.data?.error || err.message));
     } finally {
