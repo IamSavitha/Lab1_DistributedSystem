@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS travelers (
   INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Owners Table (添加了 location 字段)
+-- Owners Table (location)
 CREATE TABLE IF NOT EXISTS owners (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
