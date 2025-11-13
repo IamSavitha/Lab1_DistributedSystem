@@ -1,1 +1,1 @@
-# Lab1_DistributedSystem
+# Lab2_DistributedSystem
