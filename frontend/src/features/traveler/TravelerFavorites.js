@@ -1,139 +1,145 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchFavorites, removeFavorite } from '../../features/booking/bookingSlice';
 
 function TravelerFavorites() {
-  const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [removingId, setRemovingId] = useState(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  // Fetch favorite properties on mount
+  // Redux state
+  const { favorites, loading, error } = useSelector((state) => state.booking);
+
+  // Fetch favorites on component mount
   useEffect(() => {
-    fetchFavorites();
-  }, []);
+    dispatch(fetchFavorites());
+  }, [dispatch]);
 
-  const fetchFavorites = async () => {
-    setLoading(true);
-    try {
-      // Changed endpoint to /favorites instead of /traveler/favorites
-      const res = await api.get('/favorites');
-      console.log('Favorites response:', res.data);
-      
-      // Parse based on backend response structure
-      const favoritesList = res.data.favorites || res.data;
-      setFavorites(Array.isArray(favoritesList) ? favoritesList : []);
-    } catch (err) {
-      console.error('Failed to load favorites:', err);
-      alert('Failed to load favorites.');
-    } finally {
-      setLoading(false);
+  // Handle view details
+  const handleViewDetails = (propertyId) => {
+    navigate(`/traveler/property/${propertyId}`);
+  };
+
+  // Handle remove favorite
+  const handleRemoveFavorite = (propertyId) => {
+    if (window.confirm('Remove this property from your favorites?')) {
+      dispatch(removeFavorite(propertyId));
     }
   };
 
-  // Handle remove from favorites
-  const handleRemoveFavorite = async (propertyId) => {
-    if (!window.confirm('Are you sure you want to remove this property from favorites?')) {
-      return;
-    }
+  return (
+    <div className="container mt-4">
+      {/* Header */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <h2>My Favorites</h2>
+          <p className="text-muted">Properties you've saved for later</p>
+        </div>
+      </div>
 
-    setRemovingId(propertyId);
-    try {
-      await api.delete(`/favorites/${propertyId}`);
-      // Remove from local state immediately for better UX
-      setFavorites(favorites.filter(property => property.id !== propertyId));
-      alert('Removed from favorites!');
-    } catch (err) {
-      console.error('Failed to remove favorite:', err);
-      alert('Failed to remove from favorites. Please try again.');
-    } finally {
-      setRemovingId(null);
-    }
-  };
+      {/* Error Display */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
 
-  if (loading) {
-    return (
-      <main className="container mt-5">
-        <div className="text-center">
+      {/* Loading State */}
+      {loading ? (
+        <div className="text-center py-5">
           <div className="spinner-border" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
           <p className="mt-2">Loading your favorites...</p>
         </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="container mt-5">
-      <h2 className="text-center mb-4">My Favorite Properties</h2>
-
-      {favorites.length === 0 ? (
+      ) : favorites.length === 0 ? (
         <div className="text-center py-5">
-          <p className="text-muted mb-3">You haven't added any favorites yet.</p>
-          <Link to="/traveler/dashboard" className="btn btn-primary">
-            Explore Properties
-          </Link>
+          <div className="mb-3">
+            <i className="bi bi-heart" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+          </div>
+          <h4>No favorites yet</h4>
+          <p className="text-muted">
+            Start adding properties to your favorites by clicking the heart icon!
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/traveler/dashboard')}>
+            Browse Properties
+          </button>
         </div>
       ) : (
         <>
-          <p className="text-muted mb-4">
-            You have {favorites.length} favorite {favorites.length === 1 ? 'property' : 'properties'}
-          </p>
-          <div className="row">
-            {favorites.map((property) => (
-              <div className="col-md-4 mb-4" key={property.id}>
-                <div className="card h-100 shadow-sm position-relative">
-                  {/* Remove Favorite Button (Heart Icon) */}
-                  <button
-                    className="btn btn-danger position-absolute top-0 end-0 m-2"
-                    style={{ zIndex: 10, borderRadius: '50%', width: '40px', height: '40px' }}
-                    onClick={() => handleRemoveFavorite(property.id)}
-                    disabled={removingId === property.id}
-                    aria-label="Remove from favorites"
-                    title="Remove from favorites"
-                  >
-                    {removingId === property.id ? (
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <div className="row mb-3">
+            <div className="col-12">
+              <p className="text-muted">You have {favorites.length} favorite properties</p>
+            </div>
+          </div>
+          <div className="row g-4">
+            {favorites.map((favorite) => {
+              const property = favorite.property || favorite;
+              return (
+                <div key={favorite._id || property._id} className="col-md-4">
+                  <div className="card h-100 shadow-sm">
+                    {property.images && property.images.length > 0 ? (
+                      <img
+                        src={property.images[0]}
+                        className="card-img-top"
+                        alt={property.title}
+                        style={{ height: '200px', objectFit: 'cover' }}
+                      />
                     ) : (
-                      <span style={{ fontSize: '20px' }}>♥</span>
+                      <div
+                        className="card-img-top bg-secondary d-flex align-items-center justify-content-center"
+                        style={{ height: '200px' }}
+                      >
+                        <span className="text-white">No Image</span>
+                      </div>
                     )}
-                  </button>
-
-                  <img
-                    src={property.imageUrl || property.image_url || 'https://via.placeholder.com/300x200?text=Property+Image'}
-                    className="card-img-top"
-                    alt={`Image of ${property.name || property.title}`}
-                    style={{ height: '200px', objectFit: 'cover' }}
-                  />
-                  <div className="card-body d-flex flex-column">
-                    <h5 className="card-title">{property.name || property.title}</h5>
-                    <p className="card-text">
-                      <i className="bi bi-geo-alt"></i> {property.location || property.city}
-                    </p>
-                    {property.type && (
-                      <p className="card-text text-muted">
-                        {property.type} · {property.bedrooms} BR · {property.bathrooms} BA
+                    <div className="card-body">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h5 className="card-title mb-0">{property.title}</h5>
+                        <button
+                          className="btn btn-link p-0 text-danger"
+                          onClick={() => handleRemoveFavorite(favorite.propertyId || property._id)}
+                          title="Remove from favorites"
+                        >
+                          <i className="bi bi-heart-fill" style={{ fontSize: '1.5rem' }}></i>
+                        </button>
+                      </div>
+                      <p className="card-text text-muted small mb-2">
+                        <i className="bi bi-geo-alt"></i> {property.location}
                       </p>
+                      <p className="card-text">
+                        {property.description?.substring(0, 100)}...
+                      </p>
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <span className="text-primary fw-bold">
+                          ${property.pricePerNight}/night
+                        </span>
+                        <span className="text-muted small">
+                          <i className="bi bi-people"></i> {property.guests} guests
+                        </span>
+                      </div>
+                      <button
+                        className="btn btn-primary w-100"
+                        onClick={() => handleViewDetails(favorite.propertyId || property._id)}
+                      >
+                        View Details
+                      </button>
+                    </div>
+                    {favorite.addedAt && (
+                      <div className="card-footer bg-light">
+                        <small className="text-muted">
+                          Added on {new Date(favorite.addedAt).toLocaleDateString()}
+                        </small>
+                      </div>
                     )}
-                    <p className="card-text fw-bold text-primary">
-                      ${property.price || property.price_per_night} / night
-                    </p>
-                    
-                    {/* View Details Button */}
-                    <Link 
-                      to={`/property/${property.id}`} 
-                      className="btn btn-outline-primary w-100 mt-auto"
-                    >
-                      View Details
-                    </Link>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }
 

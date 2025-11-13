@@ -1,74 +1,59 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchPropertyById, clearPropertyDetail } from '../../features/property/propertySlice';
+import { createBooking } from '../../features/booking/bookingSlice';
+import { addFavorite, removeFavorite, fetchFavorites } from '../../features/booking/bookingSlice';
 import AgentButton from '../../components/AgentButton';
 
 function PropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [property, setProperty] = useState(null);
+  const dispatch = useDispatch();
+
+  // Redux state
+  const { propertyDetail: property, loading } = useSelector((state) => state.property);
+  const { favorites, loading: bookingLoading, successMessage } = useSelector((state) => state.booking);
+
+  // Local state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [guests, setGuests] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [bookingLoading, setBookingLoading] = useState(false);
 
   // Fetch property details on mount
   useEffect(() => {
-    const fetchProperty = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/properties/${id}`);
-        console.log('Property API response:', res.data);
-        
-        // Handle different response formats
-        const propertyData = res.data.property || res.data;
-        console.log('Property data extracted:', propertyData);
-        
-        setProperty(propertyData);
-        
-        // Check if this specific property is favorited
-        checkIfFavorite();
-      } catch (err) {
-        console.error('Failed to load property details:', err);
-        alert('Failed to load property details.');
-      } finally {
-        setLoading(false);
-      }
+    dispatch(fetchPropertyById(id));
+    dispatch(fetchFavorites());
+    
+    return () => {
+      dispatch(clearPropertyDetail());
     };
-    fetchProperty();
-  }, [id]);
+  }, [dispatch, id]);
 
-  // Check favorite status for THIS property only
-  const checkIfFavorite = async () => {
-    try {
-      const res = await api.get(`/favorites/check/${id}`);
-      setIsFavorite(res.data.isFavorite);
-    } catch (err) {
-      // Fallback: if endpoint doesn't exist, check from all favorites
-      try {
-        const res = await api.get('/traveler/favorites');
-        const favoriteIds = res.data.map(fav => fav.id);
-        setIsFavorite(favoriteIds.includes(parseInt(id)));
-      } catch (fallbackErr) {
-        console.error('Failed to check favorite status:', fallbackErr);
-      }
+  // Redirect to bookings after successful booking
+  useEffect(() => {
+    if (successMessage === 'Booking created successfully!') {
+      setTimeout(() => {
+        navigate('/traveler/bookings');
+      }, 2000);
     }
-  };
+  }, [successMessage, navigate]);
+
+  // Check if current property is in favorites
+  const isFavorite = favorites.some(
+    fav => (fav.propertyId === id || fav._id === id || fav.id === parseInt(id))
+  );
 
   // Handle add/remove favorite
   const handleToggleFavorite = async () => {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
-        await api.delete(`/favorites/${id}`);
-        setIsFavorite(false);
+        await dispatch(removeFavorite(id)).unwrap();
         alert('Removed from favorites!');
       } else {
-        await api.post('/favorites', { propertyId: id });
-        setIsFavorite(true);
+        await dispatch(addFavorite(id)).unwrap();
         alert('Added to favorites!');
       }
     } catch (err) {
@@ -83,30 +68,49 @@ function PropertyDetails() {
   const handleBooking = async (e) => {
     e.preventDefault();
     
-    // Validate dates
     if (new Date(endDate) <= new Date(startDate)) {
       alert('End date must be after start date.');
       return;
     }
 
-    setBookingLoading(true);
+    const totalInfo = calculateTotal();
+    if (!totalInfo) {
+      alert('Please select valid dates.');
+      return;
+    }
+
     try {
-      await api.post('/bookings/request', {
+      await dispatch(createBooking({
         propertyId: id,
-        startDate,
-        endDate,
-        guests,
-      });
+        ownerId: property.owner || property.ownerId,
+        checkIn: startDate,
+        checkOut: endDate,
+        guests: parseInt(guests),
+        totalPrice: totalInfo.total,
+      })).unwrap();
+      
       alert('Booking request submitted successfully!');
-      // Navigate to bookings page
-      navigate('/traveler/bookings');
     } catch (err) {
       console.error('Booking failed:', err);
-      alert('Booking failed. Please try again.');
-    } finally {
-      setBookingLoading(false);
+      alert(err || 'Booking failed. Please try again.');
     }
   };
+
+  // Calculate total nights and price
+  const calculateTotal = () => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      if (nights > 0) {
+        const pricePerNight = property?.price || property?.price_per_night || property?.pricePerNight || 0;
+        return { nights, total: nights * pricePerNight };
+      }
+    }
+    return null;
+  };
+
+  const totalInfo = calculateTotal();
 
   if (loading) {
     return (
@@ -132,44 +136,38 @@ function PropertyDetails() {
     );
   }
 
-  // Calculate total nights and price
-  const calculateTotal = () => {
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-      if (nights > 0) {
-        const pricePerNight = property.price || property.price_per_night;
-        return { nights, total: nights * pricePerNight };
-      }
-    }
-    return null;
-  };
-
-  const totalInfo = calculateTotal();
-
   return (
     <main className="container mt-5" role="main">
-      {/* Breadcrumb navigation */}
+      {successMessage && (
+        <div className="alert alert-success" role="alert">
+          {successMessage} Redirecting to your bookings...
+        </div>
+      )}
+
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item"><a href="/traveler/dashboard">Search</a></li>
-          <li className="breadcrumb-item active" aria-current="page">{property.name || property.title}</li>
+          <li className="breadcrumb-item active" aria-current="page">
+            {property.name || property.title}
+          </li>
         </ol>
       </nav>
 
       <div className="row">
-        {/* Property Image */}
         <div className="col-md-6 mb-4">
           <img
-            src={property.imageUrl || property.image_url || 'https://via.placeholder.com/600x400?text=Property+Image'}
+            src={
+              property.imageUrl || 
+              property.image_url || 
+              (property.images && property.images[0]) ||
+              'https://via.placeholder.com/600x400?text=Property+Image'
+            }
             alt={`${property.name || property.title} - ${property.type || 'Property'} in ${property.location || property.city || 'Location'}`}
             className="img-fluid rounded shadow"
             style={{ width: '100%', height: '400px', objectFit: 'cover' }}
           />
         </div>
 
-        {/* Property Info */}
         <div className="col-md-6">
           <div className="d-flex justify-content-between align-items-start mb-3">
             <div>
@@ -179,7 +177,6 @@ function PropertyDetails() {
               </p>
             </div>
             
-            {/* Favorite Button */}
             <button
               className={`btn ${isFavorite ? 'btn-danger' : 'btn-outline-danger'}`}
               onClick={handleToggleFavorite}
@@ -191,16 +188,15 @@ function PropertyDetails() {
               {favoriteLoading ? (
                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               ) : isFavorite ? (
-                <>❤️ Favorited</>
+                'Favorited'
               ) : (
-                <>🤍 Add to Favorites</>
+                'Add to Favorites'
               )}
             </button>
           </div>
 
           <p className="lead">{property.description || 'No description available.'}</p>
 
-          {/* Property Details */}
           <div className="card mb-4">
             <div className="card-body">
               <h2 className="h5 card-title">Property Details</h2>
@@ -215,7 +211,9 @@ function PropertyDetails() {
                 <dd className="col-sm-8">{property.bathrooms || 'N/A'}</dd>
                 
                 <dt className="col-sm-4">Max Guests:</dt>
-                <dd className="col-sm-8">{property.maxGuests || property.max_guests || 'N/A'}</dd>
+                <dd className="col-sm-8">
+                  {property.maxGuests || property.max_guests || property.guests || 'N/A'}
+                </dd>
                 
                 {property.amenities && (
                   <>
@@ -243,12 +241,11 @@ function PropertyDetails() {
 
           <p className="h4 text-primary mb-3">
             <span className="visually-hidden">Price:</span>
-            ${property.price || property.price_per_night || 0} per night
+            ${property.price || property.price_per_night || property.pricePerNight || 0} per night
           </p>
         </div>
       </div>
 
-      {/* Booking Form */}
       <section className="mt-5" aria-labelledby="booking-section">
         <div className="row justify-content-center">
           <div className="col-md-8">
@@ -290,7 +287,7 @@ function PropertyDetails() {
                         id="guests"
                         className="form-control"
                         min="1"
-                        max={property.maxGuests || property.max_guests || 10}
+                        max={property.maxGuests || property.max_guests || property.guests || 10}
                         value={guests}
                         onChange={(e) => setGuests(e.target.value)}
                         required
@@ -299,11 +296,10 @@ function PropertyDetails() {
                     </div>
                   </div>
 
-                  {/* Price Summary */}
                   {totalInfo && (
                     <div className="alert alert-info mt-3" role="status" aria-live="polite">
                       <strong>Price Summary:</strong><br />
-                      ${property.price || property.price_per_night} × {totalInfo.nights} {totalInfo.nights === 1 ? 'night' : 'nights'} = <strong>${totalInfo.total}</strong>
+                      ${property.price || property.price_per_night || property.pricePerNight} x {totalInfo.nights} {totalInfo.nights === 1 ? 'night' : 'nights'} = <strong>${totalInfo.total}</strong>
                     </div>
                   )}
 
@@ -331,7 +327,6 @@ function PropertyDetails() {
         </div>
       </section>
       
-      {/* AI Agent Button */}
       <AgentButton />
     </main>
   );

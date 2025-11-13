@@ -1,100 +1,169 @@
-import React, { useEffect, useState } from 'react';
-import api from '../../services/api';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchBookingHistory } from '../../features/booking/bookingSlice';
 
 function TravelerHistory() {
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  // Fetch past bookings on mount
+  // Redux state
+  const { history, loading, error } = useSelector((state) => state.booking);
+
+  // Fetch booking history on component mount
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    dispatch(fetchBookingHistory());
+  }, [dispatch]);
 
-  const fetchHistory = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      console.log('Fetching history from /bookings/traveler/history...');
-      const res = await api.get('/bookings/traveler/history');
-      console.log('History response:', res.data);
-      
-      const historyList = res.data.history || res.data;
-      setHistory(Array.isArray(historyList) ? historyList : []);
-    } catch (err) {
-      console.error('Failed to load booking history:', err);
-      setError(err.response?.data?.error || 'Failed to load booking history.');
-    } finally {
-      setLoading(false);
+  // Get status badge class
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-success';
+      case 'cancelled':
+        return 'bg-danger';
+      case 'rejected':
+        return 'bg-warning';
+      default:
+        return 'bg-secondary';
     }
   };
 
-  if (loading) {
-    return (
-      <main className="container mt-5">
-        <div className="text-center">
+  // Format date
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Calculate nights
+  const calculateNights = (checkIn, checkOut) => {
+    const nights = Math.ceil(
+      (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
+    );
+    return nights;
+  };
+
+  // Handle view property
+  const handleViewProperty = (propertyId) => {
+    navigate(`/traveler/property/${propertyId}`);
+  };
+
+  return (
+    <div className="container mt-4">
+      {/* Header */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <h2>Booking History</h2>
+          <p className="text-muted">Your past and cancelled bookings</p>
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="text-center py-5">
           <div className="spinner-border" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-2">Loading your history...</p>
+          <p className="mt-2">Loading your booking history...</p>
         </div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="container mt-5">
-        <div className="alert alert-warning" role="alert">
-          <h4 className="alert-heading">Unable to Load History</h4>
-          <p>{error}</p>
-          <button className="btn btn-primary" onClick={fetchHistory}>
-            Try Again
+      ) : history.length === 0 ? (
+        <div className="text-center py-5">
+          <div className="mb-3">
+            <i className="bi bi-clock-history" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+          </div>
+          <h4>No booking history</h4>
+          <p className="text-muted">You don't have any past bookings yet.</p>
+          <button className="btn btn-primary" onClick={() => navigate('/traveler/dashboard')}>
+            Browse Properties
           </button>
         </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="container mt-5">
-      <h2 className="text-center mb-4">Past Stays</h2>
-
-      {history.length === 0 ? (
-        <div className="text-center py-5">
-          <p className="text-muted">You haven't completed any stays yet.</p>
-        </div>
       ) : (
-        <div className="row">
+        <div className="row g-4">
           {history.map((booking) => (
-            <div className="col-md-6 mb-4" key={booking.id}>
+            <div key={booking._id} className="col-12">
               <div className="card shadow-sm">
-                <div className="row g-0">
-                  <div className="col-md-4">
-                    <img
-                      src={booking.property?.imageUrl || booking.property?.image_url || 'https://placehold.co/200x200/e0e0e0/666666?text=Property'}
-                      alt={`Image of ${booking.property?.name || 'Property'}`}
-                      className="img-fluid rounded-start h-100"
-                      style={{ objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext fill="%23666666" font-family="Arial" font-size="16" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
-                      }}
-                    />
-                  </div>
-                  <div className="col-md-8">
-                    <div className="card-body">
-                      <h5 className="card-title">{booking.property?.name || booking.property_name || 'Property'}</h5>
-                      <p className="card-text">
-                        {booking.property?.location || booking.location}<br />
-                        {booking.startDate || booking.start_date} to {booking.endDate || booking.end_date}
+                <div className="card-body">
+                  <div className="row">
+                    {/* Property Image */}
+                    <div className="col-md-3">
+                      {booking.property?.images && booking.property.images.length > 0 ? (
+                        <img
+                          src={booking.property.images[0]}
+                          alt={booking.property.title}
+                          className="img-fluid rounded"
+                          style={{ height: '150px', width: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div
+                          className="bg-secondary rounded d-flex align-items-center justify-content-center"
+                          style={{ height: '150px' }}
+                        >
+                          <span className="text-white">No Image</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Booking Details */}
+                    <div className="col-md-6">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h5 className="mb-0">{booking.property?.title || 'Property'}</h5>
+                        <span className={`badge ${getStatusBadge(booking.status)}`}>
+                          {booking.status?.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-muted mb-2">
+                        <i className="bi bi-geo-alt"></i> {booking.property?.location}
                       </p>
-                      <p className="card-text">
-                        Guests: {booking.guests}
-                      </p>
-                      <p className="card-text text-muted">
-                        Total Paid: ${booking.totalPrice || booking.total_price}
-                      </p>
-                      <span className="badge bg-secondary">Completed</span>
+                      <div className="mb-2">
+                        <strong>Check-in:</strong> {formatDate(booking.checkIn)}
+                        <br />
+                        <strong>Check-out:</strong> {formatDate(booking.checkOut)}
+                        <br />
+                        <strong>Duration:</strong> {calculateNights(booking.checkIn, booking.checkOut)} nights
+                        <br />
+                        <strong>Guests:</strong> {booking.guests}
+                      </div>
+                      {booking.completedAt && (
+                        <p className="mb-0 text-muted small">
+                          Completed on: {formatDate(booking.completedAt)}
+                        </p>
+                      )}
+                      {booking.cancelledAt && (
+                        <p className="mb-0 text-muted small">
+                          Cancelled on: {formatDate(booking.cancelledAt)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Price and Actions */}
+                    <div className="col-md-3 d-flex flex-column justify-content-between">
+                      <div>
+                        <h4 className="text-primary mb-0">${booking.totalPrice}</h4>
+                        <p className="text-muted small">Total Price</p>
+                      </div>
+                      <div className="d-grid gap-2">
+                        <button
+                          className="btn btn-outline-primary btn-sm"
+                          onClick={() => handleViewProperty(booking.property?._id)}
+                        >
+                          View Property
+                        </button>
+                        {booking.status === 'completed' && (
+                          <button className="btn btn-outline-secondary btn-sm">
+                            Book Again
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -103,7 +172,7 @@ function TravelerHistory() {
           ))}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 
