@@ -1,6 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import './accessibility.css';
+
+// Home page
+import Home from './pages/Home';
 
 // Traveler pages
 import TravelerLogin from './features/traveler/TravelerLogin';
@@ -24,6 +27,26 @@ import OwnerAnalytics from './features/owner/OwnerAnalytics';
 // Property page
 import PropertyDetails from './features/property/PropertyDetails';
 
+// Component to conditionally render Navbar
+function ConditionalNavbar() {
+  const location = useLocation();
+  
+  // Don't show navbar on home page or login/signup pages
+  const hideNavbarPaths = [
+    '/',
+    '/traveler/login',
+    '/traveler/signup',
+    '/owner/login',
+    '/owner/signup'
+  ];
+
+  if (hideNavbarPaths.includes(location.pathname)) {
+    return null;
+  }
+
+  return <Navbar />;
+}
+
 function App() {
   return (
     <Router>
@@ -32,13 +55,13 @@ function App() {
         Skip to main content
       </a>
       
-      {/* Navbar appears on all pages except login/signup */}
-      <Navbar />
+      {/* Conditional Navbar */}
+      <ConditionalNavbar />
       
       <main id="main-content" role="main">
         <Routes>
-          {/* Default route */}
-          <Route path="/" element={<Navigate to="/traveler/login" />} />
+          {/* Home route - public landing page */}
+          <Route path="/" element={<Home />} />
 
           {/* Traveler routes */}
           <Route path="/traveler/login" element={<TravelerLogin />} />
@@ -60,7 +83,7 @@ function App() {
           <Route path="/owner/properties/:propertyId/edit" element={<OwnerPropertyForm />} />
           <Route path="/owner/analytics" element={<OwnerAnalytics />} />
 
-          {/* Property details */}
+          {/* Property details - accessible to both travelers and public */}
           <Route path="/property/:id" element={<PropertyDetails />} />
           <Route path="/traveler/property/:id" element={<PropertyDetails />} />
         </Routes>
