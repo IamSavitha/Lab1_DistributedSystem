@@ -1,0 +1,784 @@
+/* ============================================
+   CARD COMPONENTS
+   ============================================ */
+
+/* =========================
+   BASE CARD STYLES
+   ========================= */
+   .card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition-base) var(--ease-in-out);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .card-clickable {
+    cursor: pointer;
+  }
+  
+  .card-clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  /* =========================
+     CARD VARIANTS
+     ========================= */
+  
+  /* Default Card with Border */
+  .card-bordered {
+    border: 1px solid var(--color-border-light);
+  }
+  
+  .card-bordered:hover {
+    border-color: var(--color-border);
+  }
+  
+  /* Shadow Card */
+  .card-shadow {
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .card-shadow:hover {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Elevated Card */
+  .card-elevated {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .card-elevated:hover {
+    box-shadow: var(--shadow-xl);
+  }
+  
+  /* Flat Card */
+  .card-flat {
+    box-shadow: none;
+    border: 1px solid var(--color-border-light);
+  }
+  
+  /* Ghost Card */
+  .card-ghost {
+    background-color: transparent;
+    box-shadow: none;
+    border: none;
+  }
+  
+  /* Outlined Card */
+  .card-outlined {
+    background-color: transparent;
+    border: 2px solid var(--color-border);
+    box-shadow: none;
+  }
+  
+  .card-outlined:hover {
+    background-color: var(--color-background);
+    border-color: var(--color-black);
+  }
+  
+  /* =========================
+     PROPERTY CARD
+     ========================= */
+  .property-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--transition-base) var(--ease-in-out);
+    position: relative;
+  }
+  
+  .property-card:hover {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Property Card Image Container */
+  .property-card-image {
+    position: relative;
+    width: 100%;
+    padding-bottom: 66.67%; /* 3:2 Aspect Ratio */
+    overflow: hidden;
+    background-color: var(--color-background);
+  }
+  
+  .property-card-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow) var(--ease-in-out);
+  }
+  
+  .property-card:hover .property-card-image img {
+    transform: scale(1.05);
+  }
+  
+  /* Image Carousel Indicators */
+  .property-card-indicators {
+    position: absolute;
+    bottom: var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--space-1);
+    z-index: 2;
+  }
+  
+  .property-card-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transition: all var(--transition-base) var(--ease-in-out);
+  }
+  
+  .property-card-indicator.active {
+    background-color: var(--color-white);
+    width: 8px;
+    height: 8px;
+  }
+  
+  /* Property Card Heart/Favorite Button */
+  .property-card-heart {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 32px;
+    height: 32px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-base) var(--ease-in-out);
+    z-index: 2;
+  }
+  
+  .property-card-heart:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+  }
+  
+  .property-card-heart svg {
+    width: 18px;
+    height: 18px;
+    fill: transparent;
+    stroke: var(--color-white);
+    stroke-width: 2;
+    transition: all var(--transition-base) var(--ease-in-out);
+  }
+  
+  .property-card-heart.active svg {
+    fill: var(--airbnb-red);
+    stroke: var(--airbnb-red);
+  }
+  
+  /* Property Card Badge */
+  .property-card-badge {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--color-white);
+    color: var(--color-black);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: var(--shadow-sm);
+    z-index: 2;
+  }
+  
+  .property-card-badge.superhost {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-black);
+  }
+  
+  /* Property Card Content */
+  .property-card-content {
+    padding: var(--space-3);
+  }
+  
+  .property-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-1);
+  }
+  
+  .property-card-location {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-black);
+    line-height: var(--leading-tight);
+  }
+  
+  .property-card-rating {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-black);
+  }
+  
+  .property-card-rating svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--color-black);
+  }
+  
+  .property-card-distance {
+    font-size: var(--text-sm);
+    color: var(--color-gray);
+    margin-bottom: var(--space-1);
+  }
+  
+  .property-card-dates {
+    font-size: var(--text-sm);
+    color: var(--color-gray);
+    margin-bottom: var(--space-2);
+  }
+  
+  .property-card-price {
+    font-size: var(--text-sm);
+    color: var(--color-black);
+  }
+  
+  .property-card-price strong {
+    font-weight: var(--font-semibold);
+  }
+  
+  /* =========================
+     EXPERIENCE CARD
+     ========================= */
+  .experience-card {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--transition-base) var(--ease-in-out);
+  }
+  
+  .experience-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  .experience-card-image {
+    position: relative;
+    width: 100%;
+    padding-bottom: 133%; /* 3:4 Aspect Ratio */
+    overflow: hidden;
+  }
+  
+  .experience-card-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .experience-card-content {
+    padding: var(--space-3) 0;
+  }
+  
+  .experience-card-title {
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+    color: var(--color-black);
+    margin-bottom: var(--space-1);
+  }
+  
+  .experience-card-host {
+    font-size: var(--text-sm);
+    color: var(--color-gray);
+    margin-bottom: var(--space-1);
+  }
+  
+  .experience-card-price {
+    font-size: var(--text-sm);
+    color: var(--color-black);
+    font-weight: var(--font-semibold);
+  }
+  
+  /* =========================
+     CATEGORY CARD
+     ========================= */
+  .category-card {
+    cursor: pointer;
+    transition: all var(--transition-base) var(--ease-in-out);
+  }
+  
+  .category-card:hover {
+    transform: scale(1.02);
+  }
+  
+  .category-card-image {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* Square Aspect Ratio */
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-2);
+  }
+  
+  .category-card-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow) var(--ease-in-out);
+  }
+  
+  .category-card:hover .category-card-image img {
+    transform: scale(1.1);
+  }
+  
+  .category-card-title {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-black);
+    text-align: center;
+  }
+  
+  /* =========================
+     CARD HEADER/BODY/FOOTER
+     ========================= */
+  .card-header {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  
+  .card-header-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--color-black);
+    margin: 0;
+  }
+  
+  .card-header-subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-gray);
+    margin-top: var(--space-1);
+  }
+  
+  .card-body {
+    padding: var(--space-4);
+    flex: 1;
+  }
+  
+  .card-footer {
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border-light);
+    background-color: var(--color-background);
+  }
+  
+  /* =========================
+     CARD LAYOUTS
+     ========================= */
+  
+  /* Horizontal Card */
+  .card-horizontal {
+    flex-direction: row;
+  }
+  
+  .card-horizontal .card-image {
+    width: 40%;
+    min-height: 200px;
+    flex-shrink: 0;
+  }
+  
+  .card-horizontal .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Compact Card */
+  .card-compact .card-header {
+    padding: var(--space-3);
+  }
+  
+  .card-compact .card-body {
+    padding: var(--space-3);
+  }
+  
+  .card-compact .card-footer {
+    padding: var(--space-3);
+  }
+  
+  /* =========================
+     CARD IMAGE STYLES
+     ========================= */
+  .card-image {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--color-background);
+  }
+  
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  .card-image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: var(--space-4);
+    color: var(--color-white);
+  }
+  
+  /* =========================
+     CARD LIST
+     ========================= */
+  .card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  
+  .card-list-item {
+    display: flex;
+    align-items: center;
+    padding: var(--space-3);
+    background-color: var(--color-white);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base) var(--ease-in-out);
+    cursor: pointer;
+    border: 1px solid var(--color-border-light);
+  }
+  
+  .card-list-item:hover {
+    background-color: var(--color-background);
+    border-color: var(--color-border);
+    transform: translateX(4px);
+  }
+  
+  .card-list-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background-color: var(--color-background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: var(--space-3);
+    flex-shrink: 0;
+  }
+  
+  .card-list-item-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .card-list-item-title {
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+    color: var(--color-black);
+    margin-bottom: var(--space-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .card-list-item-description {
+    font-size: var(--text-sm);
+    color: var(--color-gray);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .card-list-item-action {
+    margin-left: var(--space-3);
+    flex-shrink: 0;
+  }
+  
+  /* =========================
+     CARD GRID
+     ========================= */
+  .card-grid {
+    display: grid;
+    gap: var(--space-6);
+  }
+  
+  .card-grid-1 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+  
+  .card-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .card-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .card-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .card-grid-5 {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  
+  .card-grid-6 {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  
+  /* Auto-fit Grid */
+  .card-grid-auto {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  
+  /* =========================
+     CARD STATES
+     ========================= */
+  
+  /* Loading Card */
+  .card-loading {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .card-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-skeleton);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  /* Disabled Card */
+  .card-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  /* Selected Card */
+  .card-selected {
+    border: 2px solid var(--airbnb-red);
+    box-shadow: 0 0 0 4px rgba(255, 56, 92, 0.1);
+  }
+  
+  /* =========================
+     CARD BADGES
+     ========================= */
+  .card-badge-container {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    z-index: 1;
+  }
+  
+  .card-badge {
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--color-white);
+    color: var(--color-black);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .card-badge-new {
+    background-color: var(--airbnb-red);
+    color: var(--color-white);
+  }
+  
+  .card-badge-featured {
+    background-color: var(--color-warning);
+    color: var(--color-white);
+  }
+  
+  .card-badge-verified {
+    background-color: var(--color-success);
+    color: var(--color-white);
+  }
+  
+  /* =========================
+     RESPONSIVE CARDS
+     ========================= */
+  @media (max-width: 1024px) {
+    .card-grid-5,
+    .card-grid-6 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .card-horizontal {
+      flex-direction: column;
+    }
+    
+    .card-horizontal .card-image {
+      width: 100%;
+      height: 200px;
+    }
+    
+    .card-grid-3,
+    .card-grid-4,
+    .card-grid-5,
+    .card-grid-6 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .card-grid {
+      gap: var(--space-4);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .card-grid-2,
+    .card-grid-3,
+    .card-grid-4,
+    .card-grid-5,
+    .card-grid-6 {
+      grid-template-columns: 1fr;
+    }
+    
+    .card-list-item {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .card-list-item-icon {
+      margin-right: 0;
+      margin-bottom: var(--space-3);
+    }
+    
+    .card-list-item-action {
+      margin-left: 0;
+      margin-top: var(--space-3);
+    }
+  }
+  
+  /* =========================
+     CARD ANIMATIONS
+     ========================= */
+  .card-fade-in {
+    animation: fadeIn var(--duration-normal) var(--ease-out);
+  }
+  
+  .card-slide-up {
+    animation: slideInUp var(--duration-normal) var(--ease-out);
+  }
+  
+  .card-scale-in {
+    animation: scaleIn var(--duration-normal) var(--ease-out);
+  }
+  
+  /* Hover Lift Effect */
+  .card-hover-lift {
+    transition: all var(--transition-base) var(--ease-in-out);
+  }
+  
+  .card-hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-2xl);
+  }
+  
+  /* Hover Zoom Effect */
+  .card-hover-zoom {
+    transition: all var(--transition-base) var(--ease-in-out);
+  }
+  
+  .card-hover-zoom:hover {
+    transform: scale(1.02);
+  }
+  
+  /* =========================
+     SKELETON CARDS
+     ========================= */
+  .skeleton-card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  
+  .skeleton-card-image {
+    width: 100%;
+    padding-bottom: 66.67%;
+    background-color: var(--skeleton-base);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .skeleton-card-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-skeleton);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  .skeleton-card-content {
+    padding: var(--space-3);
+  }
+  
+  .skeleton-line {
+    height: 12px;
+    background-color: var(--skeleton-base);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-2);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .skeleton-line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-skeleton);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  .skeleton-line-short {
+    width: 60%;
+  }
+  
+  .skeleton-line-medium {
+    width: 80%;
+  }
+  
+  .skeleton-line-long {
+    width: 100%;
+  }

@@ -1,0 +1,324 @@
+/* ============================================
+   AIRBNB DESIGN SYSTEM - THEME VARIABLES
+   ============================================ */
+
+   :root {
+    /* =========================
+       PRIMARY COLORS
+       ========================= */
+    --airbnb-red: #FF385C;
+    --airbnb-red-dark: #E31C5F;
+    --airbnb-red-light: #FF5A70;
+    --airbnb-pink: #E91E63;
+    --airbnb-magenta: #C13584;
+    
+    /* =========================
+       NEUTRAL COLORS
+       ========================= */
+    --color-black: #222222;
+    --color-dark-gray: #484848;
+    --color-gray: #717171;
+    --color-light-gray: #B0B0B0;
+    --color-border: #DDDDDD;
+    --color-border-light: #EBEBEB;
+    --color-background: #F7F7F7;
+    --color-background-secondary: #FAFAFA;
+    --color-white: #FFFFFF;
+    
+    /* =========================
+       SEMANTIC COLORS
+       ========================= */
+    --color-success: #008A05;
+    --color-success-light: #E7F4E8;
+    --color-warning: #FFA800;
+    --color-warning-light: #FFF4E5;
+    --color-error: #C13515;
+    --color-error-light: #FDEAE7;
+    --color-info: #0084FF;
+    --color-info-light: #E6F5FF;
+    
+    /* =========================
+       TYPOGRAPHY SCALE
+       ========================= */
+    --font-family-base: 'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    --font-family-mono: 'Courier New', monospace;
+    
+    /* Font Sizes */
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-base: 16px;
+    --text-lg: 18px;
+    --text-xl: 20px;
+    --text-2xl: 24px;
+    --text-3xl: 30px;
+    --text-4xl: 36px;
+    --text-5xl: 48px;
+    --text-6xl: 64px;
+    
+    /* Font Weights */
+    --font-light: 300;
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+    
+    /* Line Heights */
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+    --leading-loose: 2;
+    
+    /* Letter Spacing */
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.025em;
+    
+    /* =========================
+       SPACING SYSTEM
+       ========================= */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+    --space-9: 36px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-20: 80px;
+    --space-24: 96px;
+    --space-32: 128px;
+    
+    /* =========================
+       BORDER RADIUS
+       ========================= */
+    --radius-none: 0;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 24px;
+    --radius-3xl: 32px;
+    --radius-full: 9999px;
+    
+    /* =========================
+       SHADOWS
+       ========================= */
+    --shadow-none: none;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 8px 28px rgba(0, 0, 0, 0.15);
+    --shadow-2xl: 0 16px 32px rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.1);
+    --shadow-3xl: 0 24px 48px rgba(0, 0, 0, 0.18);
+    --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.18);
+    --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.12);
+    --shadow-dropdown: 0 10px 40px rgba(0, 0, 0, 0.2);
+    --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.3);
+    
+    /* =========================
+       BORDERS
+       ========================= */
+    --border-width-thin: 1px;
+    --border-width-medium: 2px;
+    --border-width-thick: 4px;
+    
+    /* =========================
+       Z-INDEX SCALE
+       ========================= */
+    --z-base: 0;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-popover: 600;
+    --z-tooltip: 700;
+    --z-notification: 800;
+    
+    /* =========================
+       TRANSITIONS
+       ========================= */
+    --transition-fast: 150ms;
+    --transition-base: 200ms;
+    --transition-slow: 300ms;
+    --transition-slower: 500ms;
+    
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* =========================
+       BREAKPOINTS
+       ========================= */
+    --screen-xs: 375px;
+    --screen-sm: 640px;
+    --screen-md: 768px;
+    --screen-lg: 1024px;
+    --screen-xl: 1280px;
+    --screen-2xl: 1536px;
+    --screen-3xl: 1920px;
+    
+    /* =========================
+       CONTAINER WIDTHS
+       ========================= */
+    --container-xs: 100%;
+    --container-sm: 640px;
+    --container-md: 768px;
+    --container-lg: 1024px;
+    --container-xl: 1280px;
+    --container-2xl: 1536px;
+    --container-3xl: 1760px;
+    
+    /* =========================
+       GRID SYSTEM
+       ========================= */
+    --grid-columns: 12;
+    --grid-gap-x: var(--space-6);
+    --grid-gap-y: var(--space-6);
+    
+    /* =========================
+       ASPECT RATIOS
+       ========================= */
+    --aspect-square: 1 / 1;
+    --aspect-video: 16 / 9;
+    --aspect-photo: 4 / 3;
+    --aspect-portrait: 3 / 4;
+    
+    /* =========================
+       SPECIFIC COMPONENTS
+       ========================= */
+    
+    /* Navigation */
+    --nav-height: 80px;
+    --nav-height-mobile: 65px;
+    --nav-background: var(--color-white);
+    --nav-border: var(--color-border-light);
+    --nav-shadow: 0 1px 0 rgb(0 0 0 / 10%);
+    
+    /* Search Bar */
+    --search-height: 66px;
+    --search-height-expanded: 160px;
+    --search-border-radius: var(--radius-3xl);
+    --search-shadow: var(--shadow-2xl);
+    --search-shadow-hover: var(--shadow-3xl);
+    
+    /* Cards */
+    --card-padding: var(--space-4);
+    --card-border-radius: var(--radius-lg);
+    --card-shadow: var(--shadow-sm);
+    --card-shadow-hover: var(--shadow-lg);
+    
+    /* Buttons */
+    --btn-padding-x: var(--space-4);
+    --btn-padding-y: var(--space-3);
+    --btn-font-size: var(--text-base);
+    --btn-font-weight: var(--font-semibold);
+    --btn-border-radius: var(--radius-md);
+    --btn-transition: all var(--transition-base) var(--ease-in-out);
+    
+    /* Forms */
+    --input-height: 48px;
+    --input-padding-x: var(--space-3);
+    --input-padding-y: var(--space-3);
+    --input-border: var(--color-border);
+    --input-border-focus: var(--color-black);
+    --input-border-radius: var(--radius-md);
+    --input-font-size: var(--text-base);
+    
+    /* Modals */
+    --modal-backdrop: rgba(0, 0, 0, 0.5);
+    --modal-max-width: 568px;
+    --modal-padding: var(--space-6);
+    --modal-border-radius: var(--radius-lg);
+    
+    /* Tooltips */
+    --tooltip-bg: var(--color-black);
+    --tooltip-color: var(--color-white);
+    --tooltip-padding: var(--space-2) var(--space-3);
+    --tooltip-border-radius: var(--radius-md);
+    --tooltip-font-size: var(--text-sm);
+    
+    /* Badges */
+    --badge-padding: var(--space-1) var(--space-2);
+    --badge-font-size: var(--text-xs);
+    --badge-font-weight: var(--font-bold);
+    --badge-border-radius: var(--radius-sm);
+    
+    /* Skeleton Loading */
+    --skeleton-base: #E0E0E0;
+    --skeleton-highlight: #F5F5F5;
+    
+    /* =========================
+       ANIMATIONS DURATIONS
+       ========================= */
+    --duration-instant: 0ms;
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --duration-slower: 1000ms;
+  }
+  
+  /* =========================
+     DARK MODE VARIABLES
+     ========================= */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-black: #FFFFFF;
+      --color-dark-gray: #F7F7F7;
+      --color-gray: #B0B0B0;
+      --color-light-gray: #717171;
+      --color-border: #484848;
+      --color-border-light: #2B2B2B;
+      --color-background: #000000;
+      --color-background-secondary: #181818;
+      --color-white: #222222;
+      
+      --nav-background: #000000;
+      --nav-border: #2B2B2B;
+      
+      --modal-backdrop: rgba(255, 255, 255, 0.1);
+      
+      --skeleton-base: #2B2B2B;
+      --skeleton-highlight: #3B3B3B;
+    }
+  }
+  
+  /* =========================
+     RESPONSIVE FONT SIZES
+     ========================= */
+  @media (max-width: 768px) {
+    :root {
+      --text-xs: 11px;
+      --text-sm: 13px;
+      --text-base: 15px;
+      --text-lg: 17px;
+      --text-xl: 19px;
+      --text-2xl: 22px;
+      --text-3xl: 28px;
+      --text-4xl: 32px;
+      --text-5xl: 40px;
+      --text-6xl: 52px;
+    }
+  }
+  
+  /* =========================
+     UTILITY CUSTOM PROPERTIES
+     ========================= */
+  :root {
+    /* Gradients */
+    --gradient-primary: linear-gradient(to right, #E61E4D 0%, #E31C5F 50%, #D70466 100%);
+    --gradient-secondary: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+    --gradient-success: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+    --gradient-skeleton: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-highlight) 50%, var(--skeleton-base) 75%);
+    
+    /* Overlays */
+    --overlay-dark: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
+    --overlay-light: linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+  }
