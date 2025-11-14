@@ -2,17 +2,17 @@ import api from './api';
 
 // Create a new booking
 export const createBooking = async (bookingData) => {
-  return await api.post('/bookings', bookingData);
+  return await api.post('/bookings/request', bookingData);
 };
 
 // Get traveler's active bookings
 export const getMyBookings = async () => {
-  return await api.get('/traveler/bookings');
+  return await api.get('/bookings/traveler');
 };
 
 // Get booking history (completed/cancelled)
 export const getBookingHistory = async () => {
-  return await api.get('/traveler/bookings/history');
+  return await api.get('/bookings/traveler/history');
 };
 
 // Get single booking details
@@ -27,22 +27,22 @@ export const cancelBooking = async (bookingId) => {
 
 // Add property to favorites
 export const addToFavorites = async (propertyId) => {
-  return await api.post('/traveler/favorites', { propertyId });
+  return await api.post('/favorites', { propertyId });
 };
 
 // Remove property from favorites
 export const removeFromFavorites = async (propertyId) => {
-  return await api.delete(`/traveler/favorites/${propertyId}`);
+  return await api.delete(`/favorites/${propertyId}`);
 };
 
 // Get all favorites
 export const getFavorites = async () => {
-  return await api.get('/traveler/favorites');
+  return await api.get('/favorites');
 };
 
 // Check if property is in favorites
 export const isFavorite = async (propertyId) => {
-  return await api.get(`/traveler/favorites/check/${propertyId}`);
+  return await api.get(`/favorites/check/${propertyId}`);
 };
 
 // Owner APIs

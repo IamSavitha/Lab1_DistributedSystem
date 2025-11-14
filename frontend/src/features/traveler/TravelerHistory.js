@@ -31,6 +31,7 @@ function TravelerHistory() {
 
   // Format date
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -40,10 +41,11 @@ function TravelerHistory() {
 
   // Calculate nights
   const calculateNights = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) return 0;
     const nights = Math.ceil(
       (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
     );
-    return nights;
+    return nights > 0 ? nights : 0;
   };
 
   // Handle view property
@@ -90,7 +92,7 @@ function TravelerHistory() {
       ) : (
         <div className="row g-4">
           {history.map((booking) => (
-            <div key={booking._id} className="col-12">
+            <div key={booking.id} className="col-12">
               <div className="card shadow-sm">
                 <div className="card-body">
                   <div className="row">
@@ -99,7 +101,14 @@ function TravelerHistory() {
                       {booking.property?.images && booking.property.images.length > 0 ? (
                         <img
                           src={booking.property.images[0]}
-                          alt={booking.property.title}
+                          alt={booking.property.title || booking.property.name}
+                          className="img-fluid rounded"
+                          style={{ height: '150px', width: '100%', objectFit: 'cover' }}
+                        />
+                      ) : booking.property?.image_url || booking.property?.imageUrl ? (
+                        <img
+                          src={booking.property.image_url || booking.property.imageUrl}
+                          alt={booking.property.title || booking.property.name}
                           className="img-fluid rounded"
                           style={{ height: '150px', width: '100%', objectFit: 'cover' }}
                         />
@@ -116,20 +125,20 @@ function TravelerHistory() {
                     {/* Booking Details */}
                     <div className="col-md-6">
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h5 className="mb-0">{booking.property?.title || 'Property'}</h5>
+                        <h5 className="mb-0">{booking.property?.title || booking.property?.name || booking.property_name || 'Property'}</h5>
                         <span className={`badge ${getStatusBadge(booking.status)}`}>
                           {booking.status?.toUpperCase()}
                         </span>
                       </div>
                       <p className="text-muted mb-2">
-                        <i className="bi bi-geo-alt"></i> {booking.property?.location}
+                        <i className="bi bi-geo-alt"></i> {booking.property?.location || booking.location}
                       </p>
                       <div className="mb-2">
-                        <strong>Check-in:</strong> {formatDate(booking.checkIn)}
+                        <strong>Check-in:</strong> {formatDate(booking.startDate || booking.start_date)}
                         <br />
-                        <strong>Check-out:</strong> {formatDate(booking.checkOut)}
+                        <strong>Check-out:</strong> {formatDate(booking.endDate || booking.end_date)}
                         <br />
-                        <strong>Duration:</strong> {calculateNights(booking.checkIn, booking.checkOut)} nights
+                        <strong>Duration:</strong> {calculateNights(booking.startDate || booking.start_date, booking.endDate || booking.end_date)} nights
                         <br />
                         <strong>Guests:</strong> {booking.guests}
                       </div>
@@ -148,13 +157,13 @@ function TravelerHistory() {
                     {/* Price and Actions */}
                     <div className="col-md-3 d-flex flex-column justify-content-between">
                       <div>
-                        <h4 className="text-primary mb-0">${booking.totalPrice}</h4>
+                        <h4 className="text-primary mb-0">${booking.totalPrice || booking.total_price}</h4>
                         <p className="text-muted small">Total Price</p>
                       </div>
                       <div className="d-grid gap-2">
                         <button
                           className="btn btn-outline-primary btn-sm"
-                          onClick={() => handleViewProperty(booking.property?._id)}
+                          onClick={() => handleViewProperty(booking.property?.id || booking.propertyId)}
                         >
                           View Property
                         </button>

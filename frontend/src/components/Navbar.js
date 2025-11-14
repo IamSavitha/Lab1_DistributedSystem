@@ -16,6 +16,17 @@ function Navbar() {
   const isTravelerLoggedIn = useSelector((state) => state.traveler.isLoggedIn);
   const isOwnerLoggedIn = useSelector((state) => state.owner.isLoggedIn);
 
+  // Debug: log login status (remove this after fixing)
+  React.useEffect(() => {
+    console.log('Navbar - Login Status:', {
+      isTravelerLoggedIn,
+      isOwnerLoggedIn,
+      travelerInfo,
+      ownerInfo,
+      userType: isTravelerLoggedIn ? 'traveler' : isOwnerLoggedIn ? 'owner' : null
+    });
+  }, [isTravelerLoggedIn, isOwnerLoggedIn, travelerInfo, ownerInfo]);
+
   // Determine current user type - ensure mutual exclusivity
   const userType = isTravelerLoggedIn ? 'traveler' : isOwnerLoggedIn ? 'owner' : null;
 
@@ -65,7 +76,14 @@ function Navbar() {
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
       <div className="container-fluid">
         {/* Brand */}
-        <Link className="navbar-brand fw-bold" to={userType === 'traveler' ? '/traveler/dashboard' : '/owner/dashboard'}>
+        <Link 
+          className="navbar-brand fw-bold" 
+          to={
+            userType === 'traveler' ? '/traveler/dashboard' : 
+            userType === 'owner' ? '/owner/dashboard' : 
+            '/'
+          }
+        >
           Airbnb
         </Link>
 

@@ -11,7 +11,7 @@ export const searchProperties = async (filters) => {
   if (filters.minPrice) params.append('minPrice', filters.minPrice);
   if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
   
-  return await api.get(`/properties?${params.toString()}`);
+  return await api.get(`/properties/search?${params.toString()}`);
 };
 
 // Get property by ID

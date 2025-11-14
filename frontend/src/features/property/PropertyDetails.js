@@ -81,12 +81,10 @@ function PropertyDetails() {
 
     try {
       await dispatch(createBooking({
-        propertyId: id,
-        ownerId: property.owner || property.ownerId,
-        checkIn: startDate,
-        checkOut: endDate,
+        propertyId: parseInt(id),  // Convert to number
+        startDate: startDate,       // Changed from checkIn
+        endDate: endDate,          // Changed from checkOut
         guests: parseInt(guests),
-        totalPrice: totalInfo.total,
       })).unwrap();
       
       alert('Booking request submitted successfully!');

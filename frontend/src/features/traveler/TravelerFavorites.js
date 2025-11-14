@@ -76,7 +76,7 @@ function TravelerFavorites() {
             {favorites.map((favorite) => {
               const property = favorite.property || favorite;
               return (
-                <div key={favorite._id || property._id} className="col-md-4">
+                <div key={favorite.id || property.id} className="col-md-4">
                   <div className="card h-100 shadow-sm">
                     {property.images && property.images.length > 0 ? (
                       <img
@@ -98,7 +98,7 @@ function TravelerFavorites() {
                         <h5 className="card-title mb-0">{property.title}</h5>
                         <button
                           className="btn btn-link p-0 text-danger"
-                          onClick={() => handleRemoveFavorite(favorite.propertyId || property._id)}
+                          onClick={() => handleRemoveFavorite(favorite.propertyId || property.id)}
                           title="Remove from favorites"
                         >
                           <i className="bi bi-heart-fill" style={{ fontSize: '1.5rem' }}></i>
@@ -120,7 +120,7 @@ function TravelerFavorites() {
                       </div>
                       <button
                         className="btn btn-primary w-100"
-                        onClick={() => handleViewDetails(favorite.propertyId || property._id)}
+                        onClick={() => handleViewDetails(favorite.propertyId || property.id)}
                       >
                         View Details
                       </button>

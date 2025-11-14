@@ -37,36 +37,36 @@ function App() {
       
       <main id="main-content" role="main">
         <Routes>
-        {/* Default route */}
-        <Route path="/" element={<Navigate to="/traveler/login" />} />
+          {/* Default route */}
+          <Route path="/" element={<Navigate to="/traveler/login" />} />
 
-        {/* Traveler routes */}
-        <Route path="/traveler/login" element={<TravelerLogin />} />
-        <Route path="/traveler/signup" element={<TravelerSignup />} />
-        <Route path="/traveler/dashboard" element={<TravelerDashboard />} />
-        <Route path="/traveler/profile" element={<TravelerProfile />} />
-        <Route path="/traveler/bookings" element={<TravelerBookings />} />
-        <Route path="/traveler/favorites" element={<TravelerFavorites />} />
-        <Route path="/traveler/history" element={<TravelerHistory />} />
+          {/* Traveler routes */}
+          <Route path="/traveler/login" element={<TravelerLogin />} />
+          <Route path="/traveler/signup" element={<TravelerSignup />} />
+          <Route path="/traveler/dashboard" element={<TravelerDashboard />} />
+          <Route path="/traveler/profile" element={<TravelerProfile />} />
+          <Route path="/traveler/bookings" element={<TravelerBookings />} />
+          <Route path="/traveler/favorites" element={<TravelerFavorites />} />
+          <Route path="/traveler/history" element={<TravelerHistory />} />
 
-        {/* Owner routes */}
-        <Route path="/owner/login" element={<OwnerLogin />} />
-        <Route path="/owner/signup" element={<OwnerSignup />} />
-        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-        <Route path="/owner/properties" element={<OwnerProperties />} />
-        <Route path="/owner/bookings" element={<OwnerBookings />} />
-        <Route path="/owner/profile" element={<OwnerProfile />} />
-        <Route path="/owner/properties/new" element={<OwnerPropertyForm />} />
-        <Route path="/owner/properties/:propertyId/edit" element={<OwnerPropertyForm />} />
-        <Route path="/owner/analytics" element={<OwnerAnalytics />} />
+          {/* Owner routes */}
+          <Route path="/owner/login" element={<OwnerLogin />} />
+          <Route path="/owner/signup" element={<OwnerSignup />} />
+          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+          <Route path="/owner/properties" element={<OwnerProperties />} />
+          <Route path="/owner/bookings" element={<OwnerBookings />} />
+          <Route path="/owner/profile" element={<OwnerProfile />} />
+          <Route path="/owner/properties/new" element={<OwnerPropertyForm />} />
+          <Route path="/owner/properties/:propertyId/edit" element={<OwnerPropertyForm />} />
+          <Route path="/owner/analytics" element={<OwnerAnalytics />} />
 
-        {/* Property details */}
-        <Route path="/property/:id" element={<PropertyDetails />} />
-      </Routes>
+          {/* Property details */}
+          <Route path="/property/:id" element={<PropertyDetails />} />
+          <Route path="/traveler/property/:id" element={<PropertyDetails />} />
+        </Routes>
       </main>
     </Router>
   );
 }
 
 export default App;
-

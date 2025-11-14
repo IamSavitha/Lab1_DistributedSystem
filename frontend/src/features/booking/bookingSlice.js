@@ -108,8 +108,10 @@ const bookingSlice = createSlice({
       })
       .addCase(createBooking.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentBooking = action.payload;
-        state.bookings.unshift(action.payload); // Add to beginning
+        // Handle both {booking: {...}} and direct booking object
+        const booking = action.payload.booking || action.payload;
+        state.currentBooking = booking;
+        state.bookings.unshift(booking); // Add to beginning
         state.successMessage = 'Booking created successfully!';
       })
       .addCase(createBooking.rejected, (state, action) => {
