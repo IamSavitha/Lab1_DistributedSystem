@@ -64,6 +64,9 @@ function OwnerPropertyForm() {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [newImage, setNewImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
@@ -176,6 +179,94 @@ function OwnerPropertyForm() {
         ? prev.amenities.filter(a => a !== amenity)
         : [...prev.amenities, amenity]
     }));
+  };
+
+  // Handle image file selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB.');
+      return;
+    }
+
+    setNewImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle image upload
+  const handleImageUpload = async () => {
+    if (!newImage) {
+      alert('Please select an image first.');
+      return;
+    }
+
+    if (!isEdit) {
+      alert('Please save the property first before uploading an image.');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Image = reader.result;
+
+        try {
+          const res = await api.post(`/owner/properties/${propertyId}/image`, {
+            imageData: base64Image
+          });
+
+          if (res.data.success) {
+            // Update form with new image
+            setForm((prev) => ({
+              ...prev,
+              imageUrl: res.data.imageUrl
+            }));
+            setNewImage(null);
+            setImagePreview(null);
+
+            // Clear the file input
+            const fileInput = document.getElementById('propertyImageUpload');
+            if (fileInput) fileInput.value = '';
+
+            alert('Image uploaded successfully.');
+          }
+        } catch (err) {
+          console.error('Image upload failed:', err);
+          alert('Image upload failed: ' + (err.response?.data?.error || err.message));
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        alert('Failed to read image file.');
+        setUploading(false);
+      };
+
+      reader.readAsDataURL(newImage);
+    } catch (err) {
+      console.error('Image processing failed:', err);
+      alert('Failed to process image.');
+      setUploading(false);
+    }
   };
 
   if (loading) {
@@ -404,30 +495,17 @@ function OwnerPropertyForm() {
           </div>
         </div>
 
-        {/* Image URL */}
-        <h5 className="mb-3 mt-4">Images</h5>
-        <div className="mb-3">
-          <label className="form-label">Image URL</label>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="https://example.com/image.jpg"
-            value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-          />
-          <small className="form-text text-muted">
-            Paste a URL to an image of your property
-          </small>
-        </div>
+        {/* Property Images */}
+        <h5 className="mb-3 mt-4">Property Images</h5>
 
-        {/* Image Preview */}
+        {/* Current Image */}
         {form.imageUrl && (
           <div className="mb-3">
-            <label className="form-label">Image Preview</label>
+            <label className="form-label">Current Image</label>
             <div>
-              <img 
-                src={form.imageUrl} 
-                alt="Property preview" 
+              <img
+                src={form.imageUrl}
+                alt="Property preview"
                 className="img-thumbnail"
                 style={{ maxWidth: '300px', maxHeight: '200px' }}
                 onError={(e) => {
@@ -437,6 +515,69 @@ function OwnerPropertyForm() {
             </div>
           </div>
         )}
+
+        {/* Image Upload Section */}
+        {isEdit && (
+          <div className="mb-3">
+            <label className="form-label">Upload New Image</label>
+
+            {/* Image Preview */}
+            {imagePreview && (
+              <div className="mb-3">
+                <p className="text-muted mb-2">Preview:</p>
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="img-thumbnail"
+                  style={{ maxWidth: '300px', maxHeight: '200px' }}
+                />
+              </div>
+            )}
+
+            <input
+              type="file"
+              id="propertyImageUpload"
+              className="form-control"
+              accept="image/*"
+              onChange={handleImageSelect}
+              disabled={uploading}
+            />
+            <small className="form-text text-muted">
+              Maximum file size: 2MB. Supported formats: JPEG, PNG, GIF, WebP
+            </small>
+
+            <button
+              type="button"
+              className="btn btn-primary mt-2"
+              onClick={handleImageUpload}
+              disabled={!newImage || uploading}
+            >
+              {uploading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Uploading...
+                </>
+              ) : (
+                'Upload Image'
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Image URL (fallback) */}
+        <div className="mb-3">
+          <label className="form-label">Or enter Image URL</label>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="https://example.com/image.jpg"
+            value={form.imageUrl}
+            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+          />
+          <small className="form-text text-muted">
+            You can paste a URL to an image instead of uploading
+          </small>
+        </div>
 
         {/* Submit Button */}
         <div className="d-flex gap-2 mt-4">
