@@ -6,3 +6,4 @@ ai-agent/.env
 frontend/.env
 
 .DS_Store
+.claude/
