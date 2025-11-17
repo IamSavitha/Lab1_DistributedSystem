@@ -23,8 +23,10 @@ function TravelerProfile() {
     avatar_url: '',
   });
   const [newImage, setNewImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Fetch traveler profile on mount
   useEffect(() => {
@@ -32,8 +34,7 @@ function TravelerProfile() {
       try {
         const res = await api.get('/traveler/profile');
         console.log('Profile response:', res.data);  // Debug log
-        
-        // 修复：使用 res.data.traveler 并映射字段名
+
         const travelerData = res.data.traveler;
         setProfile({
           name: travelerData.name || '',
@@ -45,7 +46,7 @@ function TravelerProfile() {
           country: travelerData.country || '',
           languages: travelerData.languages || '',
           gender: travelerData.gender || '',
-          avatar_url: travelerData.profile_picture || '',  // 映射字段名
+          avatar_url: travelerData.profile_image || '',
         });
         setLoading(false);
       } catch (err) {
@@ -81,35 +82,86 @@ function TravelerProfile() {
     }
   };
 
+  // Handle image file selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB.');
+      return;
+    }
+
+    setNewImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Handle image upload
   const handleImageUpload = async () => {
     if (!newImage) {
       alert('Please select an image first.');
       return;
     }
-    const formData = new FormData();
-    formData.append('image', newImage);
+
+    setUploading(true);
+
     try {
-      const res = await api.post('/traveler/upload-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      // 修复：根据后端返回更新头像
-      if (res.data.success) {
-        // 重新获取 profile 以获取最新的 profile_picture
-        const profileRes = await api.get('/traveler/profile');
-        const travelerData = profileRes.data.traveler;
-        setProfile((prev) => ({ 
-          ...prev, 
-          avatar_url: travelerData.profile_picture || '' 
-        }));
-        setNewImage(null);
-        alert('Image uploaded successfully.');
-      }
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Image = reader.result;
+
+        try {
+          const res = await api.post('/traveler/profile/image', {
+            imageData: base64Image
+          });
+
+          if (res.data.success) {
+            // Update profile with new image
+            setProfile((prev) => ({
+              ...prev,
+              avatar_url: res.data.imageUrl
+            }));
+            setNewImage(null);
+            setImagePreview(null);
+
+            // Clear the file input
+            const fileInput = document.getElementById('imageUpload');
+            if (fileInput) fileInput.value = '';
+
+            alert('Image uploaded successfully.');
+          }
+        } catch (err) {
+          console.error('Image upload failed:', err);
+          alert('Image upload failed: ' + (err.response?.data?.error || err.message));
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        alert('Failed to read image file.');
+        setUploading(false);
+      };
+
+      reader.readAsDataURL(newImage);
     } catch (err) {
-      console.error('Image upload failed:', err);
-      alert('Image upload failed. Please try again.');
+      console.error('Image processing failed:', err);
+      alert('Failed to process image.');
+      setUploading(false);
     }
   };
 
@@ -147,6 +199,22 @@ function TravelerProfile() {
           <div className="card mb-4">
             <div className="card-body">
               <h5 className="card-title">Update Profile Picture</h5>
+
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="text-center mb-3">
+                  <p className="text-muted mb-2">Preview:</p>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="rounded-circle"
+                    width="120"
+                    height="120"
+                    style={{ objectFit: 'cover', border: '2px solid #007bff' }}
+                  />
+                </div>
+              )}
+
               <div className="mb-3">
                 <label htmlFor="imageUpload" className="form-label">
                   Choose a new profile image
@@ -156,15 +224,26 @@ function TravelerProfile() {
                   id="imageUpload"
                   className="form-control"
                   accept="image/*"
-                  onChange={(e) => setNewImage(e.target.files[0])}
+                  onChange={handleImageSelect}
+                  disabled={uploading}
                 />
+                <small className="form-text text-muted">
+                  Maximum file size: 2MB. Supported formats: JPEG, PNG, GIF, WebP
+                </small>
               </div>
               <button
-                className="btn btn-outline-secondary"
+                className="btn btn-primary"
                 onClick={handleImageUpload}
-                disabled={!newImage}
+                disabled={!newImage || uploading}
               >
-                Upload Image
+                {uploading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Uploading...
+                  </>
+                ) : (
+                  'Upload Image'
+                )}
               </button>
             </div>
           </div>
