@@ -1,24 +1,7 @@
 # Airbnb Prototype - Lab 2 Complete
 
-## 🎉 Project Status: 100% COMPLETE
 
-**All 5 parts of Lab 2 have been successfully implemented and tested!**
-
----
-
-## 📊 Score: 40/40 Points (100%)
-
-| Part | Description | Points | Status |
-|------|-------------|--------|--------|
-| 1 | Docker & Kubernetes | 15/15 | ✅ Complete |
-| 2 | Kafka Messaging | 10/10 | ✅ Complete |
-| 3 | MongoDB | 5/5 | ✅ Complete |
-| 4 | Redux | 5/5 | ✅ Complete |
-| 5 | JMeter | 5/5 | ✅ Complete |
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Docker Compose (Recommended for Quick Testing)
 
@@ -73,7 +56,7 @@ cd backend && npm start
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### Main Guides
 1. **[DOCKER_KUBERNETES_SETUP.md](DOCKER_KUBERNETES_SETUP.md)** - Complete Docker & K8s guide
@@ -88,17 +71,17 @@ cd backend && npm start
 
 ---
 
-## ✅ Part 1: Docker & Kubernetes (15 points)
+##  Part 1: Docker & Kubernetes (15 points)
 
 ### What's Implemented
-- ✅ All services containerized (Backend, Frontend, MySQL, MongoDB, Kafka, Zookeeper)
-- ✅ Production-ready Dockerfiles with multi-stage builds
-- ✅ Complete docker-compose.yml with 7 services
-- ✅ 8 Kubernetes deployments with proper configurations
-- ✅ Horizontal Pod Autoscaler (2-5 replicas, CPU/Memory based)
-- ✅ Persistent Volumes for databases
-- ✅ Health checks and resource limits
-- ✅ Service discovery and networking
+-   All services containerized (Backend, Frontend, MySQL, MongoDB, Kafka, Zookeeper)
+-   Production-ready Dockerfiles with multi-stage builds
+-   Complete docker-compose.yml with 7 services
+-   8 Kubernetes deployments with proper configurations
+-   Horizontal Pod Autoscaler (2-5 replicas, CPU/Memory based)
+-   Persistent Volumes for databases
+-   Health checks and resource limits
+-   Service discovery and networking
 
 ### Key Files
 - `backend/Dockerfile`, `frontend/Dockerfile`
@@ -107,17 +90,17 @@ cd backend && npm start
 
 ---
 
-## ✅ Part 2: Kafka Integration (10 points)
+##   Part 2: Kafka Integration (10 points)
 
 ### What's Implemented
-- ✅ Kafka producer for booking events
-- ✅ Two Kafka consumers (Owner & Traveler services)
-- ✅ Topics: `booking-request`, `booking-status-update`
-- ✅ Asynchronous message flow:
+-   Kafka producer for booking events
+-   Two Kafka consumers (Owner & Traveler services)
+-   Topics: `booking-request`, `booking-status-update`
+-   Asynchronous message flow:
   - Traveler creates booking → Kafka → Owner receives
   - Owner accepts/cancels → Kafka → Traveler receives
-- ✅ Graceful error handling
-- ✅ Kafka UI for monitoring
+-   Graceful error handling
+-   Kafka UI for monitoring
 
 ### Key Files
 - `backend/config/kafka.js` - Configuration & producer
@@ -132,16 +115,16 @@ cd backend && npm start
 
 ---
 
-## ✅ Part 3: MongoDB (5 points)
+##   Part 3: MongoDB (5 points)
 
 ### What's Implemented
-- ✅ MongoDB 7.0 for session storage
-- ✅ Sessions persist in MongoDB (not memory)
-- ✅ Password encryption with bcrypt (salt rounds: 10)
-- ✅ Hybrid database architecture:
+-   MongoDB 7.0 for session storage
+-   Sessions persist in MongoDB (not memory)
+-   Password encryption with bcrypt (salt rounds: 10)
+-   Hybrid database architecture:
   - MySQL: Application data (users, properties, bookings)
   - MongoDB: Session storage
-- ✅ MongoDB in both Docker and Kubernetes
+-   MongoDB in both Docker and Kubernetes
 
 ### Key Files
 - `backend/server.js` - MongoDB session configuration
@@ -160,19 +143,19 @@ db.sessions.find().pretty()
 
 ---
 
-## ✅ Part 4: Redux (5 points)
+##   Part 4: Redux (5 points)
 
 ### What's Implemented
-- ✅ Redux Toolkit (@reduxjs/toolkit@^2.9.0)
-- ✅ React-Redux (react-redux@^9.2.0)
-- ✅ Redux Persist for state persistence
-- ✅ 4 Redux slices:
+-   Redux Toolkit (@reduxjs/toolkit@^2.9.0)
+-   React-Redux (react-redux@^9.2.0)
+-   Redux Persist for state persistence
+-   4 Redux slices:
   1. **travelerSlice** - Traveler authentication & profile
   2. **OwnerSlice** - Owner authentication & profile
   3. **propertySlice** - Property search, fetch, details
   4. **bookingSlice** - Booking creation, status, favorites
-- ✅ Async thunks for API calls
-- ✅ Loading and error states
+-   Async thunks for API calls
+-   Loading and error states
 
 ### Key Files
 - `frontend/src/app/store.js`
@@ -189,18 +172,18 @@ db.sessions.find().pretty()
 
 ---
 
-## ✅ Part 5: JMeter (5 points)
+##   Part 5: JMeter (5 points)
 
 ### What's Implemented
-- ✅ 3 comprehensive test plans (.jmx files)
-- ✅ Tests for 100, 200, 300, 400, 500 concurrent users
-- ✅ Automated test execution script
-- ✅ Metrics collected:
+-   3 comprehensive test plans (.jmx files)
+-   Tests for 100, 200, 300, 400, 500 concurrent users
+-   Automated test execution script
+-   Metrics collected:
   - Response times (avg, median, percentiles)
   - Throughput (requests/second)
   - Error rates (% failed)
-- ✅ HTML reports with graphs
-- ✅ CSV data for analysis
+-   HTML reports with graphs
+-   CSV data for analysis
 
 ### Key Files
 - `jmeter/test-plans/01-authentication-test.jmx`
@@ -231,7 +214,7 @@ jmeter -n -t test-plans/01-authentication-test.jmx \
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -258,28 +241,28 @@ jmeter -n -t test-plans/01-authentication-test.jmx \
 
 ---
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 Lab1_DistributedSystem/
 ├── backend/                    # Node.js Backend
 │   ├── config/
-│   │   ├── kafka.js           # ✅ Kafka configuration
+│   │   ├── kafka.js           #   Kafka configuration
 │   │   └── database.js
 │   ├── kafka/
-│   │   └── consumers.js       # ✅ Kafka consumers
-│   ├── controllers/           # ✅ Kafka producers
-│   ├── Dockerfile             # ✅ Docker
-│   └── server.js              # ✅ MongoDB sessions
+│   │   └── consumers.js       #   Kafka consumers
+│   ├── controllers/           #   Kafka producers
+│   ├── Dockerfile             #   Docker
+│   └── server.js              #   MongoDB sessions
 │
 ├── frontend/                   # React Frontend
 │   ├── src/
 │   │   ├── app/
-│   │   │   └── store.js       # ✅ Redux store
-│   │   └── features/          # ✅ Redux slices
-│   └── Dockerfile             # ✅ Docker
+│   │   │   └── store.js       #   Redux store
+│   │   └── features/          #   Redux slices
+│   └── Dockerfile             #   Docker
 │
-├── k8s/                        # ✅ Kubernetes configs (8 files)
+├── k8s/                        #   Kubernetes configs (8 files)
 │   ├── 00-namespace.yaml
 │   ├── 01-configmap.yaml
 │   ├── 02-secrets.yaml
@@ -289,15 +272,15 @@ Lab1_DistributedSystem/
 │   ├── 06-frontend-deployment.yaml
 │   └── 07-mongodb-deployment.yaml
 │
-├── jmeter/                     # ✅ Performance testing
-│   ├── test-plans/            # ✅ 3 JMeter test plans
-│   ├── run-all-tests.sh       # ✅ Automation
+├── jmeter/                     #   Performance testing
+│   ├── test-plans/            #   3 JMeter test plans
+│   ├── run-all-tests.sh       #   Automation
 │   └── results/               # Generated reports
 │
-├── docker-compose.yml          # ✅ All services
-├── docker-compose.kafka.yml    # ✅ Kafka only
+├── docker-compose.yml          #   All services
+├── docker-compose.kafka.yml    #   Kafka only
 │
-└── Documentation               # ✅ Complete guides
+└── Documentation               #   Complete guides
     ├── DOCKER_KUBERNETES_SETUP.md
     ├── KAFKA_SETUP.md
     ├── JMETER_SETUP.md
@@ -306,7 +289,7 @@ Lab1_DistributedSystem/
 
 ---
 
-## 🎯 Testing Checklist
+## Testing Checklist
 
 ### Docker Testing
 ```bash
@@ -362,7 +345,7 @@ open results/authentication-100-users-report/index.html
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables (.env)
 ```bash
@@ -386,19 +369,19 @@ SESSION_SECRET=your-secret-key-change-in-production
 
 ---
 
-## 📸 Screenshots Needed for Report
+## Screenshots Needed for Report
 
-1. ✅ Docker services running (`docker-compose ps`)
-2. ✅ Kubernetes pods (`kubectl get pods -n airbnb`)
-3. ✅ Kafka UI with topics
-4. ✅ MongoDB sessions
-5. ✅ Redux DevTools in browser
-6. ✅ JMeter test results
-7. ✅ Performance graphs
+1.   Docker services running (`docker-compose ps`)
+2.   Kubernetes pods (`kubectl get pods -n airbnb`)
+3.   Kafka UI with topics
+4.   MongoDB sessions
+5.   Redux DevTools in browser
+6.   JMeter test results
+7.   Performance graphs
 
 ---
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Backend Won't Start
 ```bash
@@ -431,11 +414,11 @@ docker exec -it airbnb-mongodb mongosh
 
 ---
 
-## 📝 Git Repository
+## Git Repository
 
 **Branch**: `lab2`
 **Commits**: 6 major commits
-**Status**: All changes pushed ✅
+**Status**: All changes pushed  
 
 ```bash
 # View commit history
@@ -447,7 +430,7 @@ git diff main..lab2
 
 ---
 
-## 🎓 Lab 2 Complete!
+## Lab 2 Complete!
 
 **All requirements met and documented.**
 **Ready for submission and demonstration!**
@@ -457,5 +440,4 @@ For questions or issues, check the detailed documentation files listed above.
 ---
 
 **Last Updated**: November 20, 2025
-**Author**: Savitha Vijayarangan
-**Score**: 40/40 (100%)
+**Author**: Savitha and Jane 
