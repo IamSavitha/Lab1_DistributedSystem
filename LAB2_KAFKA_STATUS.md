@@ -1,15 +1,13 @@
 # Lab 2 - Kafka Implementation Status
 
-## ✅ COMPLETED
-
 ### Implementation Overview
 The Kafka integration for asynchronous booking flow has been successfully implemented and tested.
 
 ### What's Running
-- ✅ **Zookeeper** (port 2181)
-- ✅ **Kafka Broker** (port 9092)
-- ✅ **Kafka UI** (port 8080) - http://localhost:8080
-- ✅ **Backend Server** (port 4000) with Kafka integration
+-   **Zookeeper** (port 2181)
+-   **Kafka Broker** (port 9092)
+-   **Kafka UI** (port 8080) - http://localhost:8080
+-   **Backend Server** (port 4000) with Kafka integration
 
 ### Architecture Implemented
 
@@ -111,7 +109,7 @@ curl -X POST http://localhost:4000/api/bookings/request \
 
 **Expected Console Output:**
 ```
-✅ Booking request published to Kafka: <booking-id>
+  Booking request published to Kafka: <booking-id>
 📨 Owner service received booking request: { bookingId: ... }
 ```
 
@@ -123,58 +121,58 @@ curl -X PUT http://localhost:4000/api/bookings/owner/<booking-id>/accept \
 
 **Expected Console Output:**
 ```
-✅ Booking status update published to Kafka: <booking-id> ACCEPTED
-📨 Traveler service received booking status update: { bookingId: ..., status: 'ACCEPTED' }
+  Booking status update published to Kafka: <booking-id> ACCEPTED
+  Traveler service received booking status update: { bookingId: ..., status: 'ACCEPTED' }
 ```
 
 ### Error Handling
 
 The implementation includes robust error handling:
 
-- ✅ **Kafka publishing failure**: Booking operations complete successfully even if Kafka is unavailable
-- ✅ **Consumer processing failure**: Errors are logged without crashing the service
-- ✅ **Graceful shutdown**: Kafka connections are properly closed on server shutdown
+-   **Kafka publishing failure**: Booking operations complete successfully even if Kafka is unavailable
+-   **Consumer processing failure**: Errors are logged without crashing the service
+-   **Graceful shutdown**: Kafka connections are properly closed on server shutdown
 
 ### Lab 2 Requirements Met
 
 | Requirement | Status | Implementation |
 |-------------|--------|----------------|
-| Kafka Setup | ✅ Complete | docker-compose.kafka.yml |
-| Booking Request Flow | ✅ Complete | booking-request topic |
-| Owner Consumes Events | ✅ Complete | ownerConsumer |
-| Status Update Flow | ✅ Complete | booking-status-update topic |
-| Traveler Consumes Updates | ✅ Complete | travelerConsumer |
-| Documentation | ✅ Complete | KAFKA_SETUP.md |
+| Kafka Setup |   Complete | docker-compose.kafka.yml |
+| Booking Request Flow |   Complete | booking-request topic |
+| Owner Consumes Events |   Complete | ownerConsumer |
+| Status Update Flow |   Complete | booking-status-update topic |
+| Traveler Consumes Updates |   Complete | travelerConsumer |
+| Documentation |   Complete | KAFKA_SETUP.md |
 
 ### Verification Checklist
 
-- ✅ Kafka broker running on port 9092
-- ✅ Zookeeper running on port 2181
-- ✅ Kafka UI accessible on port 8080
-- ✅ Backend server connected to Kafka
-- ✅ Producer publishing events
-- ✅ Consumers listening to topics
-- ✅ Topics auto-created: booking-request, booking-status-update
-- ✅ Code committed to lab2 branch
-- ✅ Documentation complete
+-   Kafka broker running on port 9092
+-   Zookeeper running on port 2181
+-   Kafka UI accessible on port 8080
+-   Backend server connected to Kafka
+-   Producer publishing events
+-   Consumers listening to topics
+-   Topics auto-created: booking-request, booking-status-update
+-   Code committed to lab2 branch
+-   Documentation complete
 
 ### Next Steps for Complete Lab 2
 
 The Kafka integration is complete. To finish Lab 2, you still need to implement:
 
-1. **Docker & Kubernetes** (15 points)
+1. **Docker & Kubernetes** 
    - Dockerize all services
    - Create Kubernetes configurations
    - Deploy to K8s cluster
 
-2. **MongoDB** (5 points) - ✅ Already using MySQL, may need to add MongoDB for sessions
+2. **MongoDB** -   Already using MySQL, may need to add MongoDB for sessions
 
-3. **Redux** (5 points)
+3. **Redux**  
    - Integrate Redux in frontend
    - Manage authentication state
    - Manage property and booking state
 
-4. **JMeter Testing** (5 points)
+4. **JMeter Testing**  
    - Create test plans
    - Performance testing
    - Results analysis
@@ -189,4 +187,3 @@ The Kafka integration is complete. To finish Lab 2, you still need to implement:
 ---
 
 **Authors**: Savitha and Jane
-**Status**: Kafka integration is fully operational and ready for Lab 2 submission! 🎉

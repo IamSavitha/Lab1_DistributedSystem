@@ -1,6 +1,5 @@
 # Airbnb Prototype - Lab 2 Complete
 
-
 ## Quick Start
 
 ### Option 1: Docker Compose (Recommended for Quick Testing)
@@ -71,7 +70,7 @@ cd backend && npm start
 
 ---
 
-##  Part 1: Docker & Kubernetes (15 points)
+##  Part 1: Docker & Kubernetes
 
 ### What's Implemented
 -   All services containerized (Backend, Frontend, MySQL, MongoDB, Kafka, Zookeeper)
@@ -90,7 +89,7 @@ cd backend && npm start
 
 ---
 
-##   Part 2: Kafka Integration (10 points)
+##   Part 2: Kafka Integration
 
 ### What's Implemented
 -   Kafka producer for booking events
@@ -115,7 +114,7 @@ cd backend && npm start
 
 ---
 
-##   Part 3: MongoDB (5 points)
+##   Part 3: MongoDB
 
 ### What's Implemented
 -   MongoDB 7.0 for session storage
@@ -143,7 +142,7 @@ db.sessions.find().pretty()
 
 ---
 
-##   Part 4: Redux (5 points)
+##   Part 4: Redux 
 
 ### What's Implemented
 -   Redux Toolkit (@reduxjs/toolkit@^2.9.0)
@@ -172,7 +171,7 @@ db.sessions.find().pretty()
 
 ---
 
-##   Part 5: JMeter (5 points)
+##   Part 5: JMeter
 
 ### What's Implemented
 -   3 comprehensive test plans (.jmx files)
@@ -218,21 +217,21 @@ jmeter -n -t test-plans/01-authentication-test.jmx \
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Kubernetes Cluster                      │
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐│
-│  │ Frontend │  │ Backend  │  │  MySQL   │  │ MongoDB ││
-│  │  (2-5)   │  │  (2-5)   │  │   (1)    │  │  (1)    ││
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬────┘│
+│                  Kubernetes Cluster                     │
+│                                                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐  │
+│  │ Frontend │  │ Backend  │  │  MySQL   │  │ MongoDB │  │
+│  │  (2-5)   │  │  (2-5)   │  │   (1)    │  │  (1)    │  │
+│  └────┬─────┘  └────┬─────┘  └────-┬────┘  └────-┬───┘  │
 │       │             │              │             │      │
 │       └─────────────┴──────────────┴─────────────┘      │
-│                     │                                    │
-│       ┌─────────────┴──────────────┐                   │
-│       │                             │                   │
-│  ┌────┴─────┐              ┌───────┴────┐             │
-│  │ Zookeeper│              │   Kafka    │             │
-│  │   (1)    │              │   (1)      │             │
-│  └──────────┘              └────────────┘             │
+│                     │                                   │
+│       ┌─────────────┴──────────────┐                    │
+│       │                            │                   │
+│  ┌────┴─────┐              ┌───────┴────┐               │
+│  │ Zookeeper│              │   Kafka    │               │
+│  │   (1)    │              │   (1)      │               │
+│  └──────────┘              └────────────┘               │
 └─────────────────────────────────────────────────────────┘
          │                          │
          ▼                          ▼
@@ -411,32 +410,6 @@ docker exec -it airbnb-mysql mysql -u root -p
 # Verify MongoDB is running
 docker exec -it airbnb-mongodb mongosh
 ```
-
----
-
-## Git Repository
-
-**Branch**: `lab2`
-**Commits**: 6 major commits
-**Status**: All changes pushed  
-
-```bash
-# View commit history
-git log --oneline --graph lab2
-
-# View changes
-git diff main..lab2
-```
-
----
-
-## Lab 2 Complete!
-
-**All requirements met and documented.**
-**Ready for submission and demonstration!**
-
-For questions or issues, check the detailed documentation files listed above.
-
 ---
 
 **Last Updated**: November 20, 2025

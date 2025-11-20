@@ -1,7 +1,9 @@
 # Lab 2 Completion Summary
 
 ## Project: Airbnb Prototype Enhancement
+
 **Student**: Savitha and Jane 
+
 **Due Date**: November 24, 2025
 
 ---

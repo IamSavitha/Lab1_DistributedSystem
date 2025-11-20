@@ -2,7 +2,7 @@
 
 ## Completed Tasks   
 
-### Part 1: Docker & Kubernetes (15 points) -    COMPLETE
+### Part 1: Docker & Kubernetes 
 
 #### Docker Setup
 -    **Backend Dockerfile**: Multi-stage Node.js container with health checks
@@ -49,7 +49,7 @@
 
 ---
 
-### Part 2: Kafka for Asynchronous Messaging (10 points) -   COMPLETE
+### Part 2: Kafka for Asynchronous Messaging 
 
 #### Kafka Integration
 -   **Kafka Setup**: Integrated with Kubernetes
@@ -79,7 +79,7 @@
 
 ## Remaining Tasks  *
 
-### Part 3: MongoDB (5 points) -  * IN PROGRESS
+### Part 3: MongoDB 
 
 **Requirements:**
 - Use MongoDB as database
@@ -101,7 +101,7 @@
 
 ---
 
-### Part 4: Redux Integration (5 points) -  * TODO
+### Part 4: Redux Integration 
 
 **Requirements:**
 - Integrate Redux into React frontend
@@ -122,7 +122,7 @@
 
 ---
 
-### Part 5: JMeter Performance Testing (5 points) -  * TODO
+### Part 5: JMeter Performance Testing 
 
 **Requirements:**
 - Test critical APIs:
@@ -143,19 +143,6 @@
 - [ ] Collect results and screenshots
 - [ ] Create performance analysis graphs
 - [ ] Write performance report
-
----
-
-## Summary
-
-### Completed: 25/40 points (62.5%)
--   Docker & Kubernetes: 15 points
--   Kafka Integration: 10 points
-
-### Remaining: 15/40 points (37.5%)
--  * MongoDB: 5 points
--  * Redux: 5 points
--  * JMeter: 5 points
 
 ---
 

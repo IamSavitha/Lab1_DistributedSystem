@@ -1,8 +1,11 @@
 # Lab 2 Final Status Report
 
 **Student**: Savitha and Jane 
+
 **Project**: Airbnb Prototype Enhancement
+
 **Branch**: lab2
+
 **Date**: November 20, 2025
 ---
 
@@ -266,7 +269,7 @@ Lab1_DistributedSystem/
 
 ---
 
-## 🎯 Lab 2 Complete Requirements Checklist
+## Lab 2 Complete Requirements Checklist
 
 ### Part 1: Docker & Kubernetes (15 points)
 -   Dockerize Traveler service
@@ -314,7 +317,7 @@ Lab1_DistributedSystem/
 
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### 1. Docker Compose (All Services)
 ```bash
@@ -341,7 +344,7 @@ Results in: `jmeter/results/`
 
 ---
 
-## 📝 Git Commits
+## Git Commits
 
 All work committed to `lab2` branch:
 
