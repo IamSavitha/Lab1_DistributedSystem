@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -74,11 +75,19 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Cookie']
 }));
 
-// Session Configuration - MUST BE BEFORE ROUTES
+// Session Configuration with MongoDB - MUST BE BEFORE ROUTES
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URL || 'mongodb://admin:mongopassword@localhost:27017/airbnb_sessions?authSource=admin',
+    ttl: 24 * 60 * 60, // 1 day in seconds
+    touchAfter: 24 * 3600, // Lazy session update
+    crypto: {
+      secret: process.env.SESSION_SECRET || 'your-secret-key'
+    }
+  }),
   cookie: {
     secure: false, // Set to true in production with HTTPS
     httpOnly: true, // Prevents client-side JavaScript from accessing cookie

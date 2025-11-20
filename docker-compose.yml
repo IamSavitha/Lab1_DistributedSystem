@@ -1,4 +1,26 @@
 services:
+  # MongoDB Database (for sessions)
+  mongodb:
+    image: mongo:7.0
+    container_name: airbnb-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mongopassword}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-airbnb_sessions}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - airbnb-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
   # MySQL Database
   mysql:
     image: mysql:8.0
@@ -91,6 +113,8 @@ services:
     container_name: airbnb-backend
     restart: unless-stopped
     depends_on:
+      mongodb:
+        condition: service_healthy
       mysql:
         condition: service_healthy
       kafka:
@@ -104,6 +128,7 @@ services:
       DB_USER: ${DB_USER:-airbnb_user}
       DB_PASSWORD: ${DB_PASSWORD:-password123}
       DB_NAME: ${DB_NAME:-airbnb_db}
+      MONGO_URL: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-mongopassword}@mongodb:27017/${MONGO_DB:-airbnb_sessions}?authSource=admin
       KAFKA_BROKER: kafka:9093
       SESSION_SECRET: ${SESSION_SECRET:-your-secret-key-change-in-production}
     volumes:
@@ -142,5 +167,7 @@ networks:
     driver: bridge
 
 volumes:
+  mongodb_data:
+    driver: local
   mysql_data:
     driver: local

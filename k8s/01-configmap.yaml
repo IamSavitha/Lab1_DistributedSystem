@@ -4,10 +4,15 @@ metadata:
   name: airbnb-config
   namespace: airbnb
 data:
-  # Database Configuration
+  # MySQL Database Configuration
   DB_HOST: "mysql-service"
   DB_NAME: "airbnb_db"
   DB_USER: "airbnb_user"
+
+  # MongoDB Configuration
+  MONGO_HOST: "mongodb-service"
+  MONGO_DB: "airbnb_sessions"
+  MONGO_USER: "admin"
 
   # Kafka Configuration
   KAFKA_BROKER: "kafka-service:9093"

@@ -53,6 +53,28 @@ spec:
             secretKeyRef:
               name: airbnb-secrets
               key: DB_PASSWORD
+        - name: MONGO_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: airbnb-config
+              key: MONGO_HOST
+        - name: MONGO_DB
+          valueFrom:
+            configMapKeyRef:
+              name: airbnb-config
+              key: MONGO_DB
+        - name: MONGO_USER
+          valueFrom:
+            configMapKeyRef:
+              name: airbnb-config
+              key: MONGO_USER
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: airbnb-secrets
+              key: MONGO_PASSWORD
+        - name: MONGO_URL
+          value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@$(MONGO_HOST):27017/$(MONGO_DB)?authSource=admin"
         - name: KAFKA_BROKER
           valueFrom:
             configMapKeyRef:
