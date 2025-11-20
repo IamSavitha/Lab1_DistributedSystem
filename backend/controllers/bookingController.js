@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const { isValidDate, isEndDateAfterStartDate, calculateNights } = require('../utils/validation');
+const { sendBookingRequest, sendBookingStatusUpdate } = require('../config/kafka');
 
 // Create Booking Request (Traveler)
 const createBooking = async (req, res) => {
@@ -87,6 +88,24 @@ const createBooking = async (req, res) => {
       'SELECT *, start_date as startDate, end_date as endDate, total_price as totalPrice, created_at as createdAt FROM bookings WHERE id = ?',
       [result.insertId]
     );
+
+    // Publish booking request to Kafka for owner service
+    try {
+      await sendBookingRequest({
+        id: bookings[0].id,
+        propertyId: bookings[0].property_id,
+        travelerId: bookings[0].traveler_id,
+        startDate: bookings[0].start_date,
+        endDate: bookings[0].end_date,
+        guests: bookings[0].guests,
+        totalPrice: bookings[0].total_price,
+        status: bookings[0].status,
+        createdAt: bookings[0].created_at
+      });
+    } catch (kafkaError) {
+      console.error('Kafka publishing failed, but booking was created:', kafkaError);
+      // Continue - booking was created in DB even if Kafka fails
+    }
 
     res.status(201).json({
       success: true,
@@ -460,6 +479,21 @@ const acceptBooking = async (req, res) => {
       [id]
     );
 
+    // Publish status update to Kafka for traveler service
+    try {
+      await sendBookingStatusUpdate({
+        id: updatedBookings[0].id,
+        propertyId: updatedBookings[0].property_id,
+        travelerId: updatedBookings[0].traveler_id,
+        status: 'ACCEPTED',
+        propertyName: booking.property_name,
+        acceptedAt: updatedBookings[0].accepted_at
+      });
+    } catch (kafkaError) {
+      console.error('Kafka publishing failed for status update:', kafkaError);
+      // Continue - status was updated in DB even if Kafka fails
+    }
+
     res.json({
       success: true,
       message: 'Booking accepted successfully. Property is now blocked for these dates.',
@@ -521,6 +555,21 @@ const cancelBookingOwner = async (req, res) => {
       'SELECT * FROM bookings WHERE id = ?',
       [id]
     );
+
+    // Publish status update to Kafka for traveler service
+    try {
+      await sendBookingStatusUpdate({
+        id: updatedBookings[0].id,
+        propertyId: updatedBookings[0].property_id,
+        travelerId: updatedBookings[0].traveler_id,
+        status: 'CANCELLED',
+        propertyName: booking.property_name,
+        cancelledAt: updatedBookings[0].cancelled_at
+      });
+    } catch (kafkaError) {
+      console.error('Kafka publishing failed for status update:', kafkaError);
+      // Continue - status was updated in DB even if Kafka fails
+    }
 
     res.json({
       success: true,

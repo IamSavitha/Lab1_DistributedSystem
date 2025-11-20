@@ -3,6 +3,10 @@ const session = require('express-session');
 const cors = require('cors');
 require('dotenv').config();
 
+// Kafka setup
+const { initProducer, initConsumers, disconnectKafka } = require('./config/kafka');
+const { startAllConsumers } = require('./kafka/consumers');
+
 // Database connection
 const mysql = require('mysql2/promise');
 
@@ -136,10 +140,46 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
+// Initialize Kafka and start server
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(` Health check: http://localhost:${PORT}/health`);
+
+const startServer = async () => {
+  try {
+    // Initialize Kafka producer
+    await initProducer();
+
+    // Initialize Kafka consumers
+    await initConsumers();
+
+    // Start all consumer listeners
+    await startAllConsumers();
+
+    // Start Express server
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(` Health check: http://localhost:${PORT}/health`);
+      console.log('✅ Kafka integration initialized successfully');
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await disconnectKafka();
+  process.exit(0);
 });
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await disconnectKafka();
+  process.exit(0);
+});
+
+// Start the server
+startServer();

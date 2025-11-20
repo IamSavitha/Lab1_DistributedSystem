@@ -15,6 +15,7 @@
     "express": "^4.21.2",
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.2",
+    "kafkajs": "^2.2.4",
     "multer": "^1.4.4",
     "mysql2": "^3.15.3",
     "swagger-jsdoc": "^6.2.8",
