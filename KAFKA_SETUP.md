@@ -256,3 +256,7 @@ kafka-topics --create --topic booking-request --bootstrap-server localhost:9092
 - Add message schema validation
 - Implement event sourcing for booking history
 - Add monitoring with Prometheus/Grafana
+
+---
+
+**Authors**: Savitha and Jane

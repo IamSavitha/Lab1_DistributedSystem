@@ -1,16 +1,14 @@
 # Lab 2 Completion Summary
 
 ## Project: Airbnb Prototype Enhancement
-**Student**: Savitha Vijayarangan
+**Student**: Savitha and Jane 
 **Due Date**: November 24, 2025
-**Total Points**: 40
-**Completed**: 30/40 (75%)
 
 ---
 
-## ✅ COMPLETED SECTIONS
+##   COMPLETED SECTIONS
 
-### Part 1: Docker & Kubernetes Setup (15/15 points) ✅
+### Part 1: Docker & Kubernetes Setup  
 
 #### Docker Implementation
 **Files Created:**
@@ -21,13 +19,13 @@
 - `docker-compose.yml` - Complete orchestration
 
 **Services Containerized:**
-1. ✅ MySQL Database (port 3306)
-2. ✅ MongoDB Sessions (port 27017)
-3. ✅ Zookeeper (port 2181)
-4. ✅ Kafka Broker (ports 9092, 9093)
-5. ✅ Kafka UI (port 8080)
-6. ✅ Backend API - Traveler/Owner/Property/Booking services (port 4000)
-7. ✅ Frontend React App (port 3000)
+1.    MySQL Database (port 3306)
+2.    MongoDB Sessions (port 27017)
+3.    Zookeeper (port 2181)
+4.    Kafka Broker (ports 9092, 9093)
+5.    Kafka UI (port 8080)
+6.    Backend API - Traveler/Owner/Property/Booking services (port 4000)
+7.   Frontend React App (port 3000)
 
 **Features:**
 - Health checks for all services
@@ -48,15 +46,15 @@
 - `k8s/07-mongodb-deployment.yaml` - MongoDB for sessions
 
 **Kubernetes Features:**
-- ✅ Namespace for isolation (`airbnb`)
-- ✅ ConfigMaps for configuration
-- ✅ Secrets for sensitive data
-- ✅ PersistentVolumeClaims for data persistence
-- ✅ Health probes (liveness & readiness)
-- ✅ Resource limits and requests
-- ✅ Horizontal Pod Autoscaler (HPA) for backend and frontend
-- ✅ Service discovery and networking
-- ✅ Auto-scaling: 2-5 replicas based on CPU/memory
+-   Namespace for isolation (`airbnb`)
+-   ConfigMaps for configuration
+-   Secrets for sensitive data
+-   PersistentVolumeClaims for data persistence
+-   Health probes (liveness & readiness)
+-   Resource limits and requests
+-   Horizontal Pod Autoscaler (HPA) for backend and frontend
+-   Service discovery and networking
+-   Auto-scaling: 2-5 replicas based on CPU/memory
 
 **Service Communication:**
 - All services can communicate via ClusterIP services
@@ -72,7 +70,7 @@
 
 ---
 
-### Part 2: Kafka for Asynchronous Messaging (10/10 points) ✅
+### Part 2: Kafka for Asynchronous Messaging 
 
 #### Kafka Setup
 **Files Created:**
@@ -83,8 +81,8 @@
 - `LAB2_KAFKA_STATUS.md` - Status and verification
 
 **Topics Implemented:**
-1. ✅ `booking-request` - Traveler → Owner flow
-2. ✅ `booking-status-update` - Owner → Traveler flow
+1.   `booking-request` - Traveler → Owner flow
+2.   `booking-status-update` - Owner → Traveler flow
 
 #### Booking Flow Implementation
 
@@ -115,14 +113,14 @@ Traveler sees status update
 ```
 
 **Code Integration:**
-- ✅ Producer in `bookingController.js`:
+-   Producer in `bookingController.js`:
   - `createBooking()` publishes booking requests
   - `acceptBooking()` publishes status updates
   - `cancelBookingOwner()` publishes status updates
-- ✅ Owner consumer listens for booking requests
-- ✅ Traveler consumer listens for status updates
-- ✅ Graceful error handling
-- ✅ Server initialization with Kafka
+-   Owner consumer listens for booking requests
+-   Traveler consumer listens for status updates
+-   Graceful error handling
+-   Server initialization with Kafka
 
 **Testing:**
 - Kafka running on Docker Compose
@@ -132,7 +130,7 @@ Traveler sees status update
 
 ---
 
-### Part 3: MongoDB (5/5 points) ✅
+### Part 3: MongoDB 
 
 #### MongoDB Integration
 **Files Created/Modified:**
@@ -142,15 +140,15 @@ Traveler sees status update
 - Updated Kubernetes ConfigMap and Secrets
 
 **Implementation:**
-1. ✅ **MongoDB as database**: Using MongoDB 7.0
-2. ✅ **Sessions stored in MongoDB**:
+1.   **MongoDB as database**: Using MongoDB 7.0
+2.   **Sessions stored in MongoDB**:
    - Integrated `connect-mongo` with `express-session`
    - Sessions persist in MongoDB collection
    - TTL: 24 hours
    - Lazy session updates (touchAfter: 24h)
    - Encryption with session secret
 
-3. ✅ **Passwords encrypted**:
+3.   **Passwords encrypted**:
    - Using `bcryptjs` with salt rounds: 10
    - All passwords hashed before storage
    - Verified in `travelerController.js` and `ownerController.js`
@@ -171,7 +169,7 @@ Traveler sees status update
 
 ## ⏳ REMAINING SECTIONS
 
-### Part 4: Redux Integration (5 points) - TODO
+### Part 4: Redux Integration - TODO
 
 **Requirements:**
 - [ ] Install Redux Toolkit and React-Redux
@@ -186,7 +184,7 @@ Traveler sees status update
 
 ---
 
-### Part 5: JMeter Performance Testing (5 points) - TODO
+### Part 5: JMeter Performance Testing - TODO
 
 **Requirements:**
 - [ ] Install Apache JMeter
@@ -204,18 +202,6 @@ Traveler sees status update
 
 **Estimated Time:** 2-3 hours
 
----
-
-## 📊 Progress Summary
-
-| Part | Description | Points | Status |
-|------|-------------|--------|--------|
-| 1 | Docker & Kubernetes | 15 | ✅ Complete |
-| 2 | Kafka Messaging | 10 | ✅ Complete |
-| 3 | MongoDB | 5 | ✅ Complete |
-| 4 | Redux | 5 | ⏳ TODO |
-| 5 | JMeter | 5 | ⏳ TODO |
-| **Total** | | **30/40** | **75%** |
 
 ---
 
@@ -226,43 +212,43 @@ Lab1_DistributedSystem/
 ├── backend/
 │   ├── config/
 │   │   ├── database.js
-│   │   └── kafka.js                    ✅ NEW
+│   │   └── kafka.js                      NEW
 │   ├── controllers/
-│   │   ├── bookingController.js        ✅ Updated (Kafka)
-│   │   ├── ownerController.js          ✅ (bcrypt)
-│   │   └── travelerController.js       ✅ (bcrypt)
+│   │   ├── bookingController.js          Updated (Kafka)
+│   │   ├── ownerController.js            (bcrypt)
+│   │   └── travelerController.js         (bcrypt)
 │   ├── kafka/
-│   │   └── consumers.js                ✅ NEW
-│   ├── Dockerfile                      ✅ NEW
-│   ├── .dockerignore                   ✅ NEW
-│   ├── package.json                    ✅ Updated
-│   └── server.js                       ✅ Updated (Kafka + MongoDB)
+│   │   └── consumers.js                  NEW
+│   ├── Dockerfile                        NEW
+│   ├── .dockerignore                     NEW
+│   ├── package.json                      Updated
+│   └── server.js                         Updated (Kafka + MongoDB)
 │
 ├── frontend/
-│   ├── Dockerfile                      ✅ NEW
-│   └── .dockerignore                   ✅ NEW
+│   ├── Dockerfile                        NEW
+│   └── .dockerignore                     NEW
 │
 ├── k8s/
-│   ├── 00-namespace.yaml               ✅ NEW
-│   ├── 01-configmap.yaml               ✅ NEW
-│   ├── 02-secrets.yaml                 ✅ NEW
-│   ├── 03-mysql-deployment.yaml        ✅ NEW
-│   ├── 04-kafka-deployment.yaml        ✅ NEW
-│   ├── 05-backend-deployment.yaml      ✅ NEW
-│   ├── 06-frontend-deployment.yaml     ✅ NEW
-│   └── 07-mongodb-deployment.yaml      ✅ NEW
+│   ├── 00-namespace.yaml                 NEW
+│   ├── 01-configmap.yaml                 NEW
+│   ├── 02-secrets.yaml                   NEW
+│   ├── 03-mysql-deployment.yaml          NEW
+│   ├── 04-kafka-deployment.yaml          NEW
+│   ├── 05-backend-deployment.yaml        NEW
+│   ├── 06-frontend-deployment.yaml       NEW
+│   └── 07-mongodb-deployment.yaml        NEW
 │
-├── docker-compose.yml                  ✅ NEW
-├── docker-compose.kafka.yml            ✅ NEW
-├── DOCKER_KUBERNETES_SETUP.md          ✅ NEW
-├── KAFKA_SETUP.md                      ✅ NEW
-├── LAB2_KAFKA_STATUS.md                ✅ NEW
-└── LAB2_PROGRESS.md                    ✅ NEW
+├── docker-compose.yml                    NEW
+├── docker-compose.kafka.yml              NEW
+├── DOCKER_KUBERNETES_SETUP.md            NEW
+├── KAFKA_SETUP.md                        NEW
+├── LAB2_KAFKA_STATUS.md                  NEW
+└── LAB2_PROGRESS.md                      NEW
 ```
 
 ---
 
-## 🚀 How to Run
+## How to Run
 
 ### Docker Compose
 ```bash
@@ -305,51 +291,51 @@ kubectl logs -f deployment/backend -n airbnb
 ## 🔍 Verification
 
 ### Docker Verification
-✅ All services running: `docker-compose ps`
-✅ Backend health: `curl http://localhost:4000/health`
-✅ Kafka UI accessible: http://localhost:8080
-✅ MongoDB running: `docker exec -it airbnb-mongodb mongosh`
+  All services running: `docker-compose ps`
+  Backend health: `curl http://localhost:4000/health`
+  Kafka UI accessible: http://localhost:8080
+  MongoDB running: `docker exec -it airbnb-mongodb mongosh`
 
 ### Kubernetes Verification
-✅ All pods ready: `kubectl get pods -n airbnb`
-✅ HPA configured: `kubectl get hpa -n airbnb`
-✅ Services created: `kubectl get svc -n airbnb`
-✅ PVCs bound: `kubectl get pvc -n airbnb`
+  All pods ready: `kubectl get pods -n airbnb`
+  HPA configured: `kubectl get hpa -n airbnb`
+  Services created: `kubectl get svc -n airbnb`
+  PVCs bound: `kubectl get pvc -n airbnb`
 
 ### Kafka Verification
-✅ Topics created: `booking-request`, `booking-status-update`
-✅ Producer publishing events
-✅ Consumers receiving messages
-✅ Console logs showing Kafka activity
+  Topics created: `booking-request`, `booking-status-update`
+  Producer publishing events
+  Consumers receiving messages
+  Console logs showing Kafka activity
 
 ### MongoDB Verification
-✅ Sessions stored in MongoDB
-✅ Passwords encrypted with bcrypt
-✅ Session persistence working
-✅ MongoDB health checks passing
+  Sessions stored in MongoDB
+  Passwords encrypted with bcrypt
+  Session persistence working
+  MongoDB health checks passing
 
 ---
 
-## 📝 Commits
+##  Commits
 
 All work committed to `lab2` branch:
 
-1. ✅ `5b7fee06` - Kafka integration implementation
-2. ✅ `1d3ce444` - Kafka status documentation
-3. ✅ `0230a9ac` - Docker and Kubernetes setup
-4. ✅ `97eb8e27` - MongoDB integration for sessions
+1.   `5b7fee06` - Kafka integration implementation
+2.   `1d3ce444` - Kafka status documentation
+3.   `0230a9ac` - Docker and Kubernetes setup
+4.   `97eb8e27` - MongoDB integration for sessions
 
 ---
 
-## 🎯 Next Steps
+## Next Steps
 
-1. **Redux Implementation** (5 points)
+1. **Redux Implementation** 
    - Set up Redux Toolkit
    - Create slices for auth, properties, bookings
    - Connect components
    - Test with DevTools
 
-2. **JMeter Testing** (5 points)
+2. **JMeter Testing** 
    - Create test plans
    - Run load tests (100-500 users)
    - Generate graphs
@@ -363,6 +349,6 @@ All work committed to `lab2` branch:
 
 ---
 
+**Authors**: Savitha and Jane
 **Last Updated**: November 20, 2025
 **Branch**: lab2
-**Status**: 75% Complete (30/40 points)

@@ -475,4 +475,5 @@ curl http://localhost:3000
 
 ---
 
+**Authors**: Savitha and Jane
 **Status**: Docker and Kubernetes setup is complete and ready for Lab 2 submission! 

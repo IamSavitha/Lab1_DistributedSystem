@@ -188,4 +188,5 @@ The Kafka integration is complete. To finish Lab 2, you still need to implement:
 
 ---
 
+**Authors**: Savitha and Jane
 **Status**: Kafka integration is fully operational and ready for Lab 2 submission! 🎉

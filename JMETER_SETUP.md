@@ -408,5 +408,6 @@ Import into Excel or Google Sheets for custom analysis.
 
 ---
 
+**Authors**: Savitha and Jane
 **Last Updated**: November 20, 2025
 **Status**: Ready for performance testing

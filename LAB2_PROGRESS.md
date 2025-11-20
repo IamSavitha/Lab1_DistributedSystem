@@ -1,14 +1,14 @@
 # Lab 2 Progress Tracker
 
-## Completed Tasks ✅
+## Completed Tasks   
 
-### Part 1: Docker & Kubernetes (15 points) - ✅ COMPLETE
+### Part 1: Docker & Kubernetes (15 points) -    COMPLETE
 
 #### Docker Setup
-- ✅ **Backend Dockerfile**: Multi-stage Node.js container with health checks
-- ✅ **Frontend Dockerfile**: Multi-stage build with Nginx for production
-- ✅ **.dockerignore files**: Optimized build context
-- ✅ **docker-compose.yml**: Complete orchestration with:
+-    **Backend Dockerfile**: Multi-stage Node.js container with health checks
+-    **Frontend Dockerfile**: Multi-stage build with Nginx for production
+-    **.dockerignore files**: Optimized build context
+-    **docker-compose.yml**: Complete orchestration with:
   - MySQL database
   - Kafka + Zookeeper
   - Kafka UI
@@ -18,21 +18,21 @@
   - Persistent volumes
 
 #### Kubernetes Setup
-- ✅ **Namespace**: Isolated airbnb namespace
-- ✅ **ConfigMaps & Secrets**: Configuration management
-- ✅ **MySQL Deployment**: Stateful service with PVC (5Gi)
-- ✅ **Kafka Deployment**: Distributed messaging with Zookeeper
-- ✅ **Backend Deployment**:
+-    **Namespace**: Isolated airbnb namespace
+-   **ConfigMaps & Secrets**: Configuration management
+-   **MySQL Deployment**: Stateful service with PVC (5Gi)
+-   **Kafka Deployment**: Distributed messaging with Zookeeper
+-   **Backend Deployment**:
   - 2 replicas with auto-scaling (2-5)
   - Health probes (liveness & readiness)
   - Resource limits
   - HPA configuration
-- ✅ **Frontend Deployment**:
+-   **Frontend Deployment**:
   - 2 replicas with auto-scaling (2-5)
   - LoadBalancer service
   - Health probes
-- ✅ **Service Communication**: All services properly networked
-- ✅ **Documentation**: Comprehensive setup guide
+-   **Service Communication**: All services properly networked
+-   **Documentation**: Comprehensive setup guide
 
 **Files Created:**
 - `backend/Dockerfile`
@@ -49,22 +49,22 @@
 
 ---
 
-### Part 2: Kafka for Asynchronous Messaging (10 points) - ✅ COMPLETE
+### Part 2: Kafka for Asynchronous Messaging (10 points) -   COMPLETE
 
 #### Kafka Integration
-- ✅ **Kafka Setup**: Integrated with Kubernetes
-- ✅ **Producer Implementation**: Backend publishes events
-- ✅ **Consumer Implementation**:
+-   **Kafka Setup**: Integrated with Kubernetes
+-   **Producer Implementation**: Backend publishes events
+-   **Consumer Implementation**:
   - Owner service consumes booking requests
   - Traveler service consumes status updates
-- ✅ **Booking Flow**:
+-   **Booking Flow**:
   - Traveler creates booking → Kafka → Owner receives
   - Owner accepts/cancels → Kafka → Traveler receives
-- ✅ **Topics**:
+-   **Topics**:
   - `booking-request`: Booking creation events
   - `booking-status-update`: Status change events
-- ✅ **Error Handling**: Graceful degradation if Kafka fails
-- ✅ **Documentation**: Complete setup guide
+-   **Error Handling**: Graceful degradation if Kafka fails
+-   **Documentation**: Complete setup guide
 
 **Files Created:**
 - `backend/config/kafka.js`
@@ -77,9 +77,9 @@
 
 ---
 
-## Remaining Tasks ⏳
+## Remaining Tasks  *
 
-### Part 3: MongoDB (5 points) - ⏳ IN PROGRESS
+### Part 3: MongoDB (5 points) -  * IN PROGRESS
 
 **Requirements:**
 - Use MongoDB as database
@@ -101,7 +101,7 @@
 
 ---
 
-### Part 4: Redux Integration (5 points) - ⏳ TODO
+### Part 4: Redux Integration (5 points) -  * TODO
 
 **Requirements:**
 - Integrate Redux into React frontend
@@ -122,7 +122,7 @@
 
 ---
 
-### Part 5: JMeter Performance Testing (5 points) - ⏳ TODO
+### Part 5: JMeter Performance Testing (5 points) -  * TODO
 
 **Requirements:**
 - Test critical APIs:
@@ -149,13 +149,13 @@
 ## Summary
 
 ### Completed: 25/40 points (62.5%)
-- ✅ Docker & Kubernetes: 15 points
-- ✅ Kafka Integration: 10 points
+-   Docker & Kubernetes: 15 points
+-   Kafka Integration: 10 points
 
 ### Remaining: 15/40 points (37.5%)
-- ⏳ MongoDB: 5 points
-- ⏳ Redux: 5 points
-- ⏳ JMeter: 5 points
+-  * MongoDB: 5 points
+-  * Redux: 5 points
+-  * JMeter: 5 points
 
 ---
 
@@ -185,22 +185,22 @@
 ## Files to Submit
 
 ### Code Repository
-- ✅ Dockerfiles (backend, frontend)
-- ✅ docker-compose.yml
-- ✅ Kubernetes configs (k8s/)
-- ✅ Kafka integration code
-- ⏳ MongoDB configuration
-- ⏳ Redux implementation
-- ⏳ JMeter test plans (.jmx files)
+-   Dockerfiles (backend, frontend)
+-   docker-compose.yml
+-   Kubernetes configs (k8s/)
+-   Kafka integration code
+-  * MongoDB configuration
+-  * Redux implementation
+-  * JMeter test plans (.jmx files)
 
 ### Documentation
-- ✅ DOCKER_KUBERNETES_SETUP.md
-- ✅ KAFKA_SETUP.md
-- ✅ LAB2_KAFKA_STATUS.md
-- ⏳ Screenshots of AWS deployment
-- ⏳ Kafka event flow screenshots
-- ⏳ Redux DevTools screenshots
-- ⏳ JMeter results and graphs
+-   DOCKER_KUBERNETES_SETUP.md
+-   KAFKA_SETUP.md
+-   LAB2_KAFKA_STATUS.md
+-  * Screenshots of AWS deployment
+-  * Kafka event flow screenshots
+-  * Redux DevTools screenshots
+-  * JMeter results and graphs
 
 ### Report
 - Architecture overview
@@ -210,4 +210,5 @@
 
 ---
 
+**Authors**: Savitha and Jane
 **Last Updated**: November 20, 2025
