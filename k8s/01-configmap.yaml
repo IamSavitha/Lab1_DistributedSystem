@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airbnb-config
+  namespace: airbnb
+data:
+  # Database Configuration
+  DB_HOST: "mysql-service"
+  DB_NAME: "airbnb_db"
+  DB_USER: "airbnb_user"
+
+  # Kafka Configuration
+  KAFKA_BROKER: "kafka-service:9093"
+
+  # Application Configuration
+  NODE_ENV: "production"
+  PORT: "4000"
