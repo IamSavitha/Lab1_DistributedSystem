@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 const { isValidEmail } = require('../utils/validation');
+const { generateToken } = require('../utils/jwt');
 
 // Owner Signup
 const signup = async (req, res) => {
@@ -108,12 +109,20 @@ const login = async (req, res) => {
     req.session.ownerId = owner.id;
     req.session.userType = 'owner';
 
+    // Generate JWT token
+    const token = generateToken({
+      id: owner.id,
+      email: owner.email,
+      userType: 'owner'
+    });
+
     delete owner.password;
 
     res.json({
       success: true,
       message: 'Login successful',
-      owner
+      owner,
+      token
     });
 
   } catch (error) {

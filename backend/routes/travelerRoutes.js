@@ -6,17 +6,11 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const { authenticateJWT, isTraveler } = require('../middleware/authMiddleware');
 
 // Middleware to check if user is authenticated as traveler
-const requireTravelerAuth = (req, res, next) => {
-  if (!req.session.travelerId) {
-    return res.status(401).json({ 
-      success: false, 
-      error: 'Authentication required' 
-    });
-  }
-  next();
-};
+// This combines JWT auth check with session fallback
+const requireTravelerAuth = [authenticateJWT, isTraveler];
 
 /**
  * @route   POST /api/traveler/signup

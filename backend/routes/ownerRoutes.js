@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const ownerController = require('../controllers/ownerController');
-const { requireOwnerAuth } = require('../middleware/auth');
+const { authenticateJWT, isOwner } = require('../middleware/authMiddleware');
+
+// Combined middleware for owner authentication (JWT + session fallback)
+const requireOwnerAuth = [authenticateJWT, isOwner];
 
 // Public routes
 router.post('/signup', ownerController.signup);

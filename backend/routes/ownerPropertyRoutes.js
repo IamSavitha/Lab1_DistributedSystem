@@ -9,7 +9,10 @@ const {
   deleteProperty
 } = require('../controllers/propertyController');
 
-const { requireOwnerAuth } = require('../middleware/auth');
+const { authenticateJWT, isOwner } = require('../middleware/authMiddleware');
+
+// Combined middleware for owner authentication
+const requireOwnerAuth = [authenticateJWT, isOwner];
 
 // All routes under /api/owner/properties require owner authentication
 router.use(requireOwnerAuth);
