@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const favoriteController = require('../controllers/favoriteController');
-const { requireTravelerAuth } = require('../middleware/auth');
+const { authenticateJWT, isTraveler } = require('../middleware/authMiddleware');
+
+// Combined middleware for traveler authentication
+const requireTravelerAuth = [authenticateJWT, isTraveler];
 
 // All routes require traveler authentication
 router.post('/', requireTravelerAuth, favoriteController.addFavorite);

@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
-const { requireTravelerAuth, requireOwnerAuth } = require('../middleware/auth');
+const { authenticateJWT, isTraveler, isOwner } = require('../middleware/authMiddleware');
+
+// Combined middleware for authentication
+const requireTravelerAuth = [authenticateJWT, isTraveler];
+const requireOwnerAuth = [authenticateJWT, isOwner];
 
 // Traveler routes
 router.post('/request', requireTravelerAuth, bookingController.createBooking);

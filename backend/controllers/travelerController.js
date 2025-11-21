@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 const { isValidEmail, isValidStateCode } = require('../utils/validation');
+const { generateToken } = require('../utils/jwt');
 
 // Traveler Signup
 const signup = async (req, res) => {
@@ -112,9 +113,16 @@ const login = async (req, res) => {
       });
     }
 
-    // Set session
+    // Set session (keep for backward compatibility)
     req.session.travelerId = traveler.id;
     req.session.userType = 'traveler';
+
+    // Generate JWT token
+    const token = generateToken({
+      id: traveler.id,
+      email: traveler.email,
+      userType: 'traveler'
+    });
 
     // Remove password from response
     delete traveler.password;
@@ -122,7 +130,8 @@ const login = async (req, res) => {
     res.json({
       success: true,
       message: 'Login successful',
-      traveler
+      traveler,
+      token
     });
 
   } catch (error) {
