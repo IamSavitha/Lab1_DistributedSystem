@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { loginTraveler } from './travelerSlice';
+import { loginTraveler } from '../../features/traveler/travelerSlice';
 import api from '../../services/api';
 
 function TravelerLogin() {
@@ -21,8 +21,13 @@ function TravelerLogin() {
         password,
       });
 
-      // Dispatch login action to Redux store
-      dispatch(loginTraveler(response.data));
+      // Response contains: { success, message, token, traveler }
+      // Dispatch login action to Redux store with token and traveler info
+      dispatch(loginTraveler({
+        traveler: response.data.traveler,
+        token: response.data.token
+      }));
+      
       alert('Login successful');
       
       // Redirect to dashboard

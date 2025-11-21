@@ -64,15 +64,16 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 
 // Middleware - ORDER MATTERS!
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase body size limits for file uploads (base64 images)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS Configuration - MUST BE BEFORE ROUTES
 app.use(cors({
   origin: 'http://localhost:3000', // Frontend URL
   credentials: true, // Allow cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Cookie']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Cookie', 'Authorization']
 }));
 
 // Session Configuration with MongoDB - MUST BE BEFORE ROUTES
@@ -81,7 +82,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URL || 'mongodb://admin:mongopassword@localhost:27017/airbnb_sessions?authSource=admin',
+    mongoUrl: process.env.MONGO_URL || 'mongodb://admin:mongopassword@mongodb:27017/airbnb_sessions?authSource=admin',
     ttl: 24 * 60 * 60, // 1 day in seconds
     touchAfter: 24 * 3600, // Lazy session update
     crypto: {

@@ -1,17 +1,20 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { isValidEmail } = require('../utils/validation');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_EXPIRY = '24h';
 
 // Owner Signup
 const signup = async (req, res) => {
   try {
-    const { name, email, password, location } = req.body;  // 添加 location
+    const { name, email, password, location } = req.body;
 
-    // 验证必填字段
     if (!name || !email || !password || !location) {
       return res.status(400).json({
         success: false,
-        message: 'Name, email, password, and location are required'  // 更新错误信息
+        message: 'Name, email, password, and location are required'
       });
     }
 
@@ -43,21 +46,33 @@ const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 修复：插入时包含 location
     const [result] = await db.query(
       'INSERT INTO owners (name, email, location, password) VALUES (?, ?, ?, ?)',
       [name, email, location, hashedPassword]
     );
 
-    // 修复：返回时包含 location
+    const ownerId = result.insertId;
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        ownerId: ownerId,
+        userType: 'owner',
+        email: email
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRY }
+    );
+
     const [owners] = await db.query(
       'SELECT id, name, email, location, created_at FROM owners WHERE id = ?',
-      [result.insertId]
+      [ownerId]
     );
 
     res.status(201).json({
       success: true,
       message: 'Owner account created successfully',
+      token: token, // JWT token for Redux
       owner: owners[0]
     });
 
@@ -105,14 +120,23 @@ const login = async (req, res) => {
       });
     }
 
-    req.session.ownerId = owner.id;
-    req.session.userType = 'owner';
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        ownerId: owner.id,
+        userType: 'owner',
+        email: owner.email
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRY }
+    );
 
     delete owner.password;
 
     res.json({
       success: true,
       message: 'Login successful',
+      token: token, // JWT token for Redux
       owner
     });
 
@@ -146,11 +170,10 @@ const logout = (req, res) => {
 // Get Owner Profile
 const getProfile = async (req, res) => {
   try {
-    const ownerId = req.session.ownerId;
+    const ownerId = req.ownerId || req.session.ownerId;
 
-    // 修复：查询时包含 location
     const [owners] = await db.query(
-      'SELECT id, name, email, location, phone, profile_picture, about, created_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, profile_image, about, created_at FROM owners WHERE id = ?',
       [ownerId]
     );
 
@@ -178,8 +201,8 @@ const getProfile = async (req, res) => {
 // Update Owner Profile
 const updateProfile = async (req, res) => {
   try {
-    const ownerId = req.session.ownerId;
-    const { name, phone, profilePicture, about, location } = req.body;  // 添加 location
+    const ownerId = req.ownerId || req.session.ownerId;
+    const { name, phone, profilePicture, about, location } = req.body;
 
     const updates = [];
     const values = [];
@@ -188,19 +211,14 @@ const updateProfile = async (req, res) => {
       updates.push('name = ?');
       values.push(name);
     }
-    if (phone !== undefined) {
-      updates.push('phone = ?');
-      values.push(phone);
-    }
     if (profilePicture !== undefined) {
-      updates.push('profile_picture = ?');
+      updates.push('profile_image = ?');
       values.push(profilePicture);
     }
     if (about !== undefined) {
       updates.push('about = ?');
       values.push(about);
     }
-    // 添加：支持更新 location
     if (location !== undefined) {
       updates.push('location = ?');
       values.push(location);
@@ -220,9 +238,8 @@ const updateProfile = async (req, res) => {
       values
     );
 
-    // 修复：返回时包含 location
     const [owners] = await db.query(
-      'SELECT id, name, email, location, phone, profile_picture, about, created_at, updated_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, profile_image, about, created_at, updated_at FROM owners WHERE id = ?',
       [ownerId]
     );
 

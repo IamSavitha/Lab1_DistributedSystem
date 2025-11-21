@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutTraveler } from '../features/traveler/travelerSlice';
-import { logoutOwner } from '../features/owner/OwnerSlice';
+import { logoutOwner } from '../features/owner/ownerSlice';
 import api from '../services/api';
 
 function Navbar() {
@@ -40,21 +40,21 @@ function Navbar() {
       if (userType === 'traveler') {
         await api.post('/traveler/logout');
         dispatch(logoutTraveler());
-        navigate('/traveler/login');
+        navigate('/'); // Navigate to homepage
       } else if (userType === 'owner') {
         await api.post('/owner/logout');
         dispatch(logoutOwner());
-        navigate('/owner/login');
+        navigate('/'); // Navigate to homepage
       }
     } catch (err) {
       console.error('Logout failed:', err);
       // Still logout on frontend even if API fails
       if (userType === 'traveler') {
         dispatch(logoutTraveler());
-        navigate('/traveler/login');
+        navigate('/'); // Navigate to homepage
       } else if (userType === 'owner') {
         dispatch(logoutOwner());
-        navigate('/owner/login');
+        navigate('/'); // Navigate to homepage
       }
     }
   };

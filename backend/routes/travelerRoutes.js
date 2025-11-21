@@ -1,26 +1,49 @@
 /**
- * Traveler Routes
- * Handles all traveler-related endpoints including authentication, profile, and image upload
+ * Traveler Routes with JWT Authentication
  */
 
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-// Middleware to check if user is authenticated as traveler
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_EXPIRY = '24h';
+
+// Middleware to verify JWT token
 const requireTravelerAuth = (req, res, next) => {
-  if (!req.session.travelerId) {
+  // First check session (for backward compatibility)
+  if (req.session && req.session.travelerId) {
+    return next();
+  }
+
+  // Then check JWT token
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
     return res.status(401).json({ 
       success: false, 
-      error: 'Authentication required' 
+      error: 'Authentication required - No token provided' 
     });
   }
-  next();
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.travelerId = decoded.travelerId;
+    req.userType = decoded.userType;
+    next();
+  } catch (error) {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Invalid or expired token' 
+    });
+  }
 };
 
 /**
  * @route   POST /api/traveler/signup
- * @desc    Register a new traveler
+ * @desc    Register a new traveler and return JWT token
  * @access  Public
  */
 router.post('/signup', async (req, res) => {
@@ -58,14 +81,31 @@ router.post('/signup', async (req, res) => {
       [name, email, hashedPassword, city, state, country]
     );
 
-    // Set session
-    req.session.travelerId = result.insertId;
-    req.session.userType = 'traveler';
+    const travelerId = result.insertId;
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        travelerId: travelerId,
+        userType: 'traveler',
+        email: email
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRY }
+    );
+
+    // JWT token is the primary authentication method (Part 4 requirement)
+    // MongoDB session storage temporarily disabled due to connection issues
 
     res.status(201).json({
       success: true,
       message: 'Traveler registered successfully',
-      travelerId: result.insertId
+      token: token, // JWT token for Redux
+      traveler: {
+        id: travelerId,
+        name: name,
+        email: email
+      }
     });
 
   } catch (error) {
@@ -79,7 +119,7 @@ router.post('/signup', async (req, res) => {
 
 /**
  * @route   POST /api/traveler/login
- * @desc    Login traveler
+ * @desc    Login traveler and return JWT token
  * @access  Public
  */
 router.post('/login', async (req, res) => {
@@ -119,13 +159,24 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Set session
-    req.session.travelerId = traveler.id;
-    req.session.userType = 'traveler';
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        travelerId: traveler.id,
+        userType: 'traveler',
+        email: traveler.email
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRY }
+    );
+
+    // JWT token is the primary authentication method (Part 4 requirement)
+    // MongoDB session storage temporarily disabled due to connection issues
 
     res.json({
       success: true,
       message: 'Login successful',
+      token: token, // JWT token for Redux
       traveler: {
         id: traveler.id,
         name: traveler.name,
@@ -170,9 +221,11 @@ router.post('/logout', requireTravelerAuth, (req, res) => {
 router.get('/profile', requireTravelerAuth, async (req, res) => {
   try {
     const db = req.app.get('db');
+    const travelerId = req.travelerId || req.session.travelerId;
+    
     const [travelers] = await db.query(
       'SELECT id, name, email, city, state, country, about, languages, profile_image, created_at FROM travelers WHERE id = ?',
-      [req.session.travelerId]
+      [travelerId]
     );
 
     if (travelers.length === 0) {
@@ -205,10 +258,11 @@ router.put('/profile', requireTravelerAuth, async (req, res) => {
   try {
     const { name, city, state, country, about, languages } = req.body;
     const db = req.app.get('db');
+    const travelerId = req.travelerId || req.session.travelerId;
 
     await db.query(
       'UPDATE travelers SET name = ?, city = ?, state = ?, country = ?, about = ?, languages = ? WHERE id = ?',
-      [name, city, state, country, about, languages, req.session.travelerId]
+      [name, city, state, country, about, languages, travelerId]
     );
 
     res.json({
@@ -232,7 +286,7 @@ router.put('/profile', requireTravelerAuth, async (req, res) => {
  */
 router.post('/profile/image', requireTravelerAuth, async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
+    const travelerId = req.travelerId || req.session.travelerId;
     const { imageData } = req.body;
     const db = req.app.get('db');
 
@@ -252,7 +306,7 @@ router.post('/profile/image', requireTravelerAuth, async (req, res) => {
       });
     }
 
-    // Check size (limit to ~2MB base64 which is ~1.5MB actual)
+    // Check size (limit to ~2MB base64)
     if (imageData.length > 2 * 1024 * 1024) {
       return res.status(400).json({ 
         success: false, 
@@ -289,7 +343,7 @@ router.post('/profile/image', requireTravelerAuth, async (req, res) => {
  */
 router.delete('/profile/image', requireTravelerAuth, async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
+    const travelerId = req.travelerId || req.session.travelerId;
     const db = req.app.get('db');
 
     // Remove image from database
@@ -320,9 +374,11 @@ router.delete('/profile/image', requireTravelerAuth, async (req, res) => {
 router.get('/check-auth', requireTravelerAuth, async (req, res) => {
   try {
     const db = req.app.get('db');
+    const travelerId = req.travelerId || req.session.travelerId;
+    
     const [travelers] = await db.query(
       'SELECT id, name, email FROM travelers WHERE id = ?',
-      [req.session.travelerId]
+      [travelerId]
     );
 
     if (travelers.length === 0) {
