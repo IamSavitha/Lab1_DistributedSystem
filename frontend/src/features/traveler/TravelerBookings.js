@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchBookings } from '../../features/booking/bookingSlice';
+import { fetchBookings, cancelBooking } from '../../features/booking/bookingSlice';
 
 function TravelerBookings() {
   const navigate = useNavigate();
@@ -53,6 +53,23 @@ function TravelerBookings() {
   // Handle view property
   const handleViewProperty = (propertyId) => {
     navigate(`/traveler/property/${propertyId}`);
+  };
+
+  // ✅ Handle cancel booking
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) {
+      return;
+    }
+
+    try {
+      await dispatch(cancelBooking(bookingId)).unwrap();
+      alert('Booking cancelled successfully!');
+      // Refresh bookings list
+      dispatch(fetchBookings());
+    } catch (error) {
+      console.error('Cancel booking failed:', error);
+      alert(error || 'Failed to cancel booking. Please try again.');
+    }
   };
 
   return (
@@ -155,8 +172,12 @@ function TravelerBookings() {
                         >
                           View Property
                         </button>
+                        {/* ✅ Cancel button - only show for pending bookings */}
                         {booking.status === 'pending' && (
-                          <button className="btn btn-outline-danger btn-sm">
+                          <button 
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleCancelBooking(booking.id)}
+                          >
                             Cancel Booking
                           </button>
                         )}

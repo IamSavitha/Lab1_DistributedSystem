@@ -11,9 +11,9 @@ const api = axios.create({
 // Request interceptor to add JWT token to headers
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage
-    const ownerToken = localStorage.getItem('owner_token');
-    const travelerToken = localStorage.getItem('traveler_token');
+    // Get token from localStorage (使用与Slice一致的key名称)
+    const ownerToken = localStorage.getItem('ownerToken');
+    const travelerToken = localStorage.getItem('travelerToken');
     const token = ownerToken || travelerToken;
     
     if (token) {

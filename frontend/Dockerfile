@@ -22,7 +22,7 @@ FROM nginx:alpine
 # Copy built files from builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Copy custom nginx configuration to fix React Router 404 on refresh
+# Copy custom nginx configuration if needed
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port

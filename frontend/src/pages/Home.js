@@ -5,6 +5,14 @@ import './Home.css';
 function Home() {
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  // Search form state
+  const [searchData, setSearchData] = useState({
+    location: '',
+    checkIn: '',
+    checkOut: '',
+    guests: 1
+  });
 
   const handleAuthClick = (type, mode) => {
     if (type === 'traveler') {
@@ -12,6 +20,31 @@ function Home() {
     } else {
       navigate(mode === 'login' ? '/owner/login' : '/owner/signup');
     }
+  };
+
+  // Handle search submission
+  const handleSearch = () => {
+    // Guest users can search, navigate to search results
+    const params = new URLSearchParams();
+    if (searchData.location) params.append('location', searchData.location);
+    if (searchData.checkIn) params.append('checkIn', searchData.checkIn);
+    if (searchData.checkOut) params.append('checkOut', searchData.checkOut);
+    if (searchData.guests) params.append('guests', searchData.guests);
+    
+    navigate(`/traveler/dashboard?${params.toString()}`);
+  };
+
+  // Adjust guest count
+  const adjustGuests = (delta) => {
+    setSearchData(prev => ({
+      ...prev,
+      guests: Math.max(1, prev.guests + delta)
+    }));
+  };
+
+  // Handle Experiences click
+  const handleExperiencesClick = () => {
+    alert('Experiences feature coming soon!');
   };
 
   return (
@@ -27,12 +60,18 @@ function Home() {
           </div>
 
           <nav className="header-nav">
-            <button className="nav-link">Places to stay</button>
-            <button className="nav-link">Experiences</button>
-            <button className="nav-link">Online Experiences</button>
+            <button className="nav-link" onClick={() => navigate('/traveler/dashboard')}>
+              Places to stay
+            </button>
+            <button className="nav-link" onClick={handleExperiencesClick}>
+              Experiences
+            </button>
+            <button className="nav-link" onClick={handleExperiencesClick}>
+              Online Experiences
+            </button>
           </nav>
 
-          <div className="header-actions" >
+          <div className="header-actions">
             <button className="host-btn" onClick={() => handleAuthClick('owner', 'login')}>
               Airbnb your home
             </button>
@@ -63,27 +102,59 @@ function Home() {
         <div className="search-container">
           <div className="search-tabs">
             <button className="search-tab active">Places to stay</button>
-            <button className="search-tab">Experiences</button>
+            <button className="search-tab" onClick={handleExperiencesClick}>Experiences</button>
           </div>
           
           <div className="search-bar">
             <div className="search-field">
               <label>Location</label>
-              <input type="text" placeholder="Where are you going?" />
+              <input 
+                type="text" 
+                placeholder="Where are you going?" 
+                value={searchData.location}
+                onChange={(e) => setSearchData({...searchData, location: e.target.value})}
+              />
             </div>
             <div className="search-field">
               <label>Check in</label>
-              <input type="text" placeholder="Add dates" />
+              <input 
+                type="date" 
+                placeholder="Add dates" 
+                value={searchData.checkIn}
+                onChange={(e) => setSearchData({...searchData, checkIn: e.target.value})}
+                min={new Date().toISOString().split('T')[0]}
+              />
             </div>
             <div className="search-field">
               <label>Check out</label>
-              <input type="text" placeholder="Add dates" />
+              <input 
+                type="date" 
+                placeholder="Add dates" 
+                value={searchData.checkOut}
+                onChange={(e) => setSearchData({...searchData, checkOut: e.target.value})}
+                min={searchData.checkIn || new Date().toISOString().split('T')[0]}
+              />
             </div>
             <div className="search-field">
               <label>Guests</label>
-              <input type="text" placeholder="Add guests" />
+              <div className="guests-control">
+                <button 
+                  className="guests-btn"
+                  onClick={() => adjustGuests(-1)}
+                  disabled={searchData.guests <= 1}
+                >
+                  -
+                </button>
+                <span className="guests-count">{searchData.guests}</span>
+                <button 
+                  className="guests-btn"
+                  onClick={() => adjustGuests(1)}
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <button className="search-btn" onClick={() => navigate('/traveler/dashboard')}>
+            <button className="search-btn" onClick={handleSearch}>
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', fill: 'none', height: '16px', width: '16px', stroke: 'currentcolor', strokeWidth: 4, overflow: 'visible' }}>
                 <g fill="none"><path d="m13 24c6.0751 0 11-4.9249 11-11 0-6.0751-4.9249-11-11-11-6.0751 0-11 4.9249-11 11 0 6.0751 4.9249 11 11 11zm8-3 9 9"></path></g>
               </svg>
@@ -139,7 +210,7 @@ function Home() {
         <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowAuthModal(false)}>
-              ×
+              &times;
             </button>
             <h2 className="modal-title">Welcome to Airbnb</h2>
             
@@ -227,7 +298,7 @@ function Home() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>© 2025 Airbnb Clone, Inc. · Privacy · Terms · Sitemap</p>
+          <p>&copy; 2025 Airbnb Clone, Inc. &middot; Privacy &middot; Terms &middot; Sitemap</p>
         </div>
       </footer>
     </div>

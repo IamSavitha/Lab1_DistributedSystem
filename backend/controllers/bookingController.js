@@ -1,33 +1,30 @@
 const db = require('../config/database');
-const { isValidDate, isEndDateAfterStartDate, calculateNights } = require('../utils/validation');
-const { sendBookingRequest, sendBookingStatusUpdate } = require('../config/kafka');
 
-// Create Booking Request (Traveler)
+// Helper function to auto-update completed bookings
+const autoUpdateCompletedBookings = async () => {
+  try {
+    await db.query(`
+      UPDATE bookings 
+      SET status = 'COMPLETED'
+      WHERE status = 'ACCEPTED' 
+      AND end_date < CURDATE()
+    `);
+  } catch (error) {
+    console.error('Error auto-updating completed bookings:', error);
+  }
+};
+
+// Create Booking (Traveler)
 const createBooking = async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
-    const { propertyId, startDate, endDate, guests } = req.body;
+    const travelerId = req.user?.id || req.session.travelerId;
+    const { propertyId, startDate, endDate, numGuests, specialRequests } = req.body;
 
-    // Validate required fields
-    if (!propertyId || !startDate || !endDate || !guests) {
+    // Validation
+    if (!propertyId || !startDate || !endDate || !numGuests) {
       return res.status(400).json({
         success: false,
-        message: 'Property ID, start date, end date, and guests are required'
-      });
-    }
-
-    // Validate dates
-    if (!isValidDate(startDate) || !isValidDate(endDate)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date format. Use YYYY-MM-DD'
-      });
-    }
-
-    if (!isEndDateAfterStartDate(startDate, endDate)) {
-      return res.status(400).json({
-        success: false,
-        message: 'End date must be after start date'
+        message: 'Missing required fields'
       });
     }
 
@@ -46,19 +43,17 @@ const createBooking = async (req, res) => {
 
     const property = properties[0];
 
-    // Check max guests
-    if (guests > property.max_guests) {
-      return res.status(400).json({
-        success: false,
-        message: 'Number of guests exceeds property maximum'
-      });
-    }
+    // Calculate total price
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    const totalPrice = nights * property.price_per_night;
 
-    // Check for conflicting accepted bookings
-    const [conflictingBookings] = await db.query(`
+    // Check for overlapping ACCEPTED or COMPLETED bookings (blocked dates)
+    const [overlappingAccepted] = await db.query(`
       SELECT * FROM bookings 
       WHERE property_id = ? 
-      AND status = 'ACCEPTED'
+      AND status IN ('ACCEPTED', 'COMPLETED')
       AND (
         (start_date <= ? AND end_date >= ?) OR
         (start_date <= ? AND end_date >= ?) OR
@@ -66,51 +61,31 @@ const createBooking = async (req, res) => {
       )
     `, [propertyId, startDate, startDate, endDate, endDate, startDate, endDate]);
 
-    if (conflictingBookings.length > 0) {
+    if (overlappingAccepted.length > 0) {
       return res.status(409).json({
         success: false,
         message: 'Property is not available for selected dates'
       });
     }
 
-    // Calculate total price
-    const nights = calculateNights(startDate, endDate);
-    const totalPrice = nights * property.price;
-
-    // Create booking
-    const [result] = await db.query(`
-      INSERT INTO bookings 
-      (property_id, traveler_id, start_date, end_date, guests, total_price, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
-    `, [propertyId, travelerId, startDate, endDate, guests, totalPrice]);
-
-    const [bookings] = await db.query(
-      'SELECT *, start_date as startDate, end_date as endDate, total_price as totalPrice, created_at as createdAt FROM bookings WHERE id = ?',
-      [result.insertId]
+    // Create booking with PENDING status
+    const [result] = await db.query(
+      'INSERT INTO bookings (property_id, traveler_id, start_date, end_date, num_guests, total_price, special_requests, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [propertyId, travelerId, startDate, endDate, numGuests, totalPrice, specialRequests || null, 'PENDING']
     );
-
-    // Publish booking request to Kafka for owner service
-    try {
-      await sendBookingRequest({
-        id: bookings[0].id,
-        propertyId: bookings[0].property_id,
-        travelerId: bookings[0].traveler_id,
-        startDate: bookings[0].start_date,
-        endDate: bookings[0].end_date,
-        guests: bookings[0].guests,
-        totalPrice: bookings[0].total_price,
-        status: bookings[0].status,
-        createdAt: bookings[0].created_at
-      });
-    } catch (kafkaError) {
-      console.error('Kafka publishing failed, but booking was created:', kafkaError);
-      // Continue - booking was created in DB even if Kafka fails
-    }
 
     res.status(201).json({
       success: true,
       message: 'Booking request submitted successfully',
-      booking: bookings[0]
+      booking: {
+        id: result.insertId,
+        propertyId,
+        startDate,
+        endDate,
+        numGuests,
+        totalPrice,
+        status: 'PENDING'
+      }
     });
 
   } catch (error) {
@@ -125,53 +100,29 @@ const createBooking = async (req, res) => {
 // Get Traveler's Bookings
 const getTravelerBookings = async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
-    const { status } = req.query;
+    const travelerId = req.user?.id || req.session.travelerId;
 
-    let query = `
+    // Auto-update completed bookings first
+    await autoUpdateCompletedBookings();
+
+    const [bookings] = await db.query(`
       SELECT 
         b.*,
-        b.start_date as startDate,
-        b.end_date as endDate,
-        b.total_price as totalPrice,
-        b.created_at as createdAt,
-        b.property_id as propertyId,
-        p.name as propertyName,
         p.name as property_name,
-        p.image_url as propertyImage,
-        p.image_url as property_image,
-        p.location as propertyLocation,
         p.location as property_location,
-        p.type as propertyType,
-        p.type as property_type,
-        p.price as pricePerNight,
-        p.price as price_per_night,
-        p.owner_id,
-        o.name as ownerName,
+        p.price_per_night,
         o.name as owner_name,
-        o.email as ownerEmail,
-        o.email as owner_email,
-        DATEDIFF(b.end_date, b.start_date) as nights
+        o.email as owner_email
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
       JOIN owners o ON p.owner_id = o.id
       WHERE b.traveler_id = ?
-    `;
-
-    const params = [travelerId];
-
-    if (status) {
-      query += ` AND b.status = ?`;
-      params.push(status.toUpperCase());
-    }
-
-    query += ` ORDER BY b.created_at DESC`;
-
-    const [bookings] = await db.query(query, params);
+      AND b.status IN ('PENDING', 'ACCEPTED')
+      ORDER BY b.start_date ASC
+    `, [travelerId]);
 
     res.json({
       success: true,
-      count: bookings.length,
       bookings
     });
 
@@ -184,62 +135,40 @@ const getTravelerBookings = async (req, res) => {
   }
 };
 
-// Get Traveler's History (Past Completed Bookings)
+// Get Traveler's Booking History
 const getTravelerHistory = async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
+    const travelerId = req.user?.id || req.session.travelerId;
 
-    // Query for past bookings (end_date < today and status = ACCEPTED or COMPLETED)
-    const query = `
+    // Auto-update completed bookings first
+    await autoUpdateCompletedBookings();
+
+    const [bookings] = await db.query(`
       SELECT 
-        b.id,
-        b.start_date as startDate,
-        b.end_date as endDate,
-        b.guests,
-        b.total_price as totalPrice,
-        b.status,
-        b.created_at as createdAt,
-        p.id as property_id,
+        b.*,
         p.name as property_name,
-        p.image_url,
-        p.location,
-        JSON_OBJECT(
-          'id', p.id,
-          'name', p.name,
-          'imageUrl', p.image_url,
-          'image_url', p.image_url,
-          'location', p.location,
-          'type', p.type,
-          'price', p.price
-        ) as property
+        p.location as property_location,
+        p.price_per_night,
+        o.name as owner_name,
+        o.email as owner_email
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
+      JOIN owners o ON p.owner_id = o.id
       WHERE b.traveler_id = ?
-      AND b.end_date < CURDATE()
-      AND b.status IN ('ACCEPTED', 'COMPLETED')
-      ORDER BY b.end_date DESC
-    `;
-
-    const [bookings] = await db.query(query, [travelerId]);
-
-    // Parse the JSON property field for each booking
-    const historyWithParsedProperty = bookings.map(booking => ({
-      ...booking,
-      property: typeof booking.property === 'string' ? JSON.parse(booking.property) : booking.property
-    }));
+      AND b.status IN ('CANCELLED', 'COMPLETED')
+      ORDER BY b.start_date DESC
+    `, [travelerId]);
 
     res.json({
       success: true,
-      count: historyWithParsedProperty.length,
-      history: historyWithParsedProperty
+      bookings
     });
 
   } catch (error) {
     console.error('Get traveler history error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error. Please try again later.',
-      error: error.message
+      message: 'Server error. Please try again later.'
     });
   }
 };
@@ -247,12 +176,12 @@ const getTravelerHistory = async (req, res) => {
 // Cancel Booking (Traveler)
 const cancelBookingTraveler = async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
+    const travelerId = req.user?.id || req.session.travelerId;
     const { id } = req.params;
 
     const [bookings] = await db.query(
-      'SELECT * FROM bookings WHERE id = ?',
-      [id]
+      'SELECT * FROM bookings WHERE id = ? AND traveler_id = ?',
+      [id, travelerId]
     );
 
     if (bookings.length === 0) {
@@ -263,13 +192,6 @@ const cancelBookingTraveler = async (req, res) => {
     }
 
     const booking = bookings[0];
-
-    if (booking.traveler_id !== travelerId) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only cancel your own bookings'
-      });
-    }
 
     if (booking.status === 'CANCELLED') {
       return res.status(400).json({
@@ -295,7 +217,7 @@ const cancelBookingTraveler = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Cancel booking error:', error);
+    console.error('Cancel booking traveler error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error. Please try again later.'
@@ -303,112 +225,348 @@ const cancelBookingTraveler = async (req, res) => {
   }
 };
 
-// Get Owner's Bookings - 修复：返回嵌套的property和traveler对象
-const getOwnerBookings = async (req, res) => {
+// Get Owner's Booking Requests (PENDING only) - WITH PAGINATION
+const getOwnerRequests = async (req, res) => {
   try {
-    const ownerId = req.session.ownerId;
-    const { status } = req.query;
+    const ownerId = req.user?.id || req.session.ownerId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
 
-    let query = `
+    // Get total count
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE p.owner_id = ?
+      AND b.status = 'PENDING'
+    `, [ownerId]);
+
+    const total = countResult[0].total;
+
+    // Get paginated bookings
+    const [bookings] = await db.query(`
       SELECT 
-        b.id,
-        b.property_id,
-        b.traveler_id,
-        b.start_date,
-        b.end_date,
-        b.guests,
-        b.total_price,
-        b.status,
-        b.created_at,
-        b.accepted_at,
-        b.cancelled_at,
-        DATEDIFF(b.end_date, b.start_date) as nights,
-        p.id as p_id,
-        p.name as p_name,
-        p.image_url as p_image_url,
-        p.location as p_location,
-        p.type as p_type,
-        p.price as p_price,
-        p.max_guests as p_max_guests,
-        t.id as t_id,
-        t.name as t_name,
-        t.email as t_email,
-        t.phone as t_phone
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email,
+        t.phone as traveler_phone
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
       JOIN travelers t ON b.traveler_id = t.id
       WHERE p.owner_id = ?
-    `;
-
-    const params = [ownerId];
-
-    if (status) {
-      query += ` AND b.status = ?`;
-      params.push(status.toUpperCase());
-    }
-
-    query += ` ORDER BY b.created_at DESC`;
-
-    const [rows] = await db.query(query, params);
-
-    // 转换为嵌套结构
-    const bookings = rows.map(row => ({
-      id: row.id,
-      propertyId: row.property_id,
-      travelerId: row.traveler_id,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      start_date: row.start_date,
-      end_date: row.end_date,
-      guests: row.guests,
-      totalPrice: row.total_price,
-      total_price: row.total_price,
-      status: row.status,
-      createdAt: row.created_at,
-      created_at: row.created_at,
-      acceptedAt: row.accepted_at,
-      accepted_at: row.accepted_at,
-      cancelledAt: row.cancelled_at,
-      cancelled_at: row.cancelled_at,
-      nights: row.nights,
-      property: {
-        id: row.p_id,
-        name: row.p_name,
-        image_url: row.p_image_url,
-        imageUrl: row.p_image_url,
-        location: row.p_location,
-        type: row.p_type,
-        price: row.p_price,
-        max_guests: row.p_max_guests
-      },
-      traveler: {
-        id: row.t_id,
-        name: row.t_name,
-        email: row.t_email,
-        phone: row.t_phone
-      }
-    }));
+      AND b.status = 'PENDING'
+      ORDER BY b.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [ownerId, limit, offset]);
 
     res.json({
       success: true,
-      count: bookings.length,
-      bookings: bookings
+      bookings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
     });
 
   } catch (error) {
-    console.error('Get owner bookings error:', error);
+    console.error('Get owner requests error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error. Please try again later.',
-      error: error.message
+      message: 'Server error. Please try again later.'
     });
   }
 };
 
-// Accept Booking (Owner) - 增强：确保日期冲突检查
+// Get Owner's Accepted Bookings - WITH PAGINATION
+const getOwnerAcceptedBookings = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Auto-update completed bookings first
+    await autoUpdateCompletedBookings();
+
+    // Get total count
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE p.owner_id = ?
+      AND b.status = 'ACCEPTED'
+    `, [ownerId]);
+
+    const total = countResult[0].total;
+
+    // Get paginated bookings
+    const [bookings] = await db.query(`
+      SELECT 
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email,
+        t.phone as traveler_phone
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE p.owner_id = ?
+      AND b.status = 'ACCEPTED'
+      ORDER BY b.start_date ASC
+      LIMIT ? OFFSET ?
+    `, [ownerId, limit, offset]);
+
+    res.json({
+      success: true,
+      bookings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get owner accepted bookings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    });
+  }
+};
+
+// Get Owner's Completed Bookings - WITH PAGINATION
+const getOwnerCompletedBookings = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Auto-update completed bookings first
+    await autoUpdateCompletedBookings();
+
+    // Get total count
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE p.owner_id = ?
+      AND b.status = 'COMPLETED'
+    `, [ownerId]);
+
+    const total = countResult[0].total;
+
+    // Get paginated bookings
+    const [bookings] = await db.query(`
+      SELECT 
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE p.owner_id = ?
+      AND b.status = 'COMPLETED'
+      ORDER BY b.end_date DESC
+      LIMIT ? OFFSET ?
+    `, [ownerId, limit, offset]);
+
+    res.json({
+      success: true,
+      bookings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get owner completed bookings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    });
+  }
+};
+
+// Get Owner's Cancelled Bookings - WITH PAGINATION
+const getOwnerCancelledBookings = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE p.owner_id = ?
+      AND b.status = 'CANCELLED'
+    `, [ownerId]);
+
+    const total = countResult[0].total;
+
+    // Get paginated bookings
+    const [bookings] = await db.query(`
+      SELECT 
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE p.owner_id = ?
+      AND b.status = 'CANCELLED'
+      ORDER BY b.cancelled_at DESC
+      LIMIT ? OFFSET ?
+    `, [ownerId, limit, offset]);
+
+    res.json({
+      success: true,
+      bookings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get owner cancelled bookings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    });
+  }
+};
+
+// Get Owner's Previous Bookings (for Dashboard - COMPLETED only, limit 10)
+const getOwnerPreviousBookings = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+
+    // Auto-update completed bookings first
+    await autoUpdateCompletedBookings();
+
+    const [bookings] = await db.query(`
+      SELECT 
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE p.owner_id = ?
+      AND b.status = 'COMPLETED'
+      ORDER BY b.end_date DESC
+      LIMIT 10
+    `, [ownerId]);
+
+    res.json({
+      success: true,
+      bookings
+    });
+
+  } catch (error) {
+    console.error('Get owner previous bookings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    });
+  }
+};
+
+// Get Owner's Recent Requests (for Dashboard - PENDING only, limit 10)
+const getOwnerRecentRequests = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+
+    const [bookings] = await db.query(`
+      SELECT 
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE p.owner_id = ?
+      AND b.status = 'PENDING'
+      ORDER BY b.created_at DESC
+      LIMIT 10
+    `, [ownerId]);
+
+    res.json({
+      success: true,
+      bookings
+    });
+
+  } catch (error) {
+    console.error('Get owner recent requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    });
+  }
+};
+
+// Get Owner's Dashboard Stats
+const getOwnerStats = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+
+    // Auto-update completed bookings first
+    await autoUpdateCompletedBookings();
+
+    const [stats] = await db.query(`
+      SELECT 
+        COUNT(CASE WHEN b.status = 'PENDING' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN b.status = 'ACCEPTED' THEN 1 END) as accepted_count,
+        COUNT(CASE WHEN b.status = 'COMPLETED' THEN 1 END) as completed_count,
+        COUNT(CASE WHEN b.status = 'CANCELLED' THEN 1 END) as cancelled_count
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE p.owner_id = ?
+    `, [ownerId]);
+
+    res.json({
+      success: true,
+      stats: stats[0]
+    });
+
+  } catch (error) {
+    console.error('Get owner stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    });
+  }
+};
+
+// Accept Booking (Owner) - WITH AUTOMATIC CANCELLATION OF OVERLAPPING BOOKINGS
 const acceptBooking = async (req, res) => {
   try {
-    const ownerId = req.session.ownerId;
+    const ownerId = req.user?.id || req.session.ownerId;
     const { id } = req.params;
 
     // Get booking with property info
@@ -428,6 +586,7 @@ const acceptBooking = async (req, res) => {
 
     const booking = bookings[0];
 
+    // Verify ownership
     if (booking.owner_id !== ownerId) {
       return res.status(403).json({
         success: false,
@@ -435,70 +594,124 @@ const acceptBooking = async (req, res) => {
       });
     }
 
+    // Check current status
     if (booking.status !== 'PENDING') {
       return res.status(400).json({
         success: false,
-        message: 'Only pending bookings can be accepted'
+        message: `Cannot accept booking with status: ${booking.status}`
       });
     }
 
-    // 再次检查日期冲突（防止并发接受）
-    const [conflictingBookings] = await db.query(`
-      SELECT * FROM bookings 
-      WHERE property_id = ? 
-      AND status = 'ACCEPTED'
-      AND id != ?
+    // Find all overlapping PENDING bookings
+    const [overlappingPendingBookings] = await db.query(`
+      SELECT 
+        b.id,
+        b.start_date,
+        b.end_date,
+        t.name as traveler_name,
+        t.email as traveler_email
+      FROM bookings b
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE b.property_id = ? 
+      AND b.id != ?
+      AND b.status = 'PENDING'
       AND (
-        (start_date <= ? AND end_date >= ?) OR
-        (start_date <= ? AND end_date >= ?) OR
-        (start_date >= ? AND end_date <= ?)
+        (b.start_date <= ? AND b.end_date >= ?) OR
+        (b.start_date <= ? AND b.end_date >= ?) OR
+        (b.start_date >= ? AND b.end_date <= ?)
       )
     `, [
-      booking.property_id, 
+      booking.property_id,
       id,
       booking.start_date, booking.start_date,
       booking.end_date, booking.end_date,
       booking.start_date, booking.end_date
     ]);
 
-    if (conflictingBookings.length > 0) {
+    // Check for overlapping ACCEPTED/COMPLETED bookings (safety check)
+    const [overlappingAcceptedBookings] = await db.query(`
+      SELECT 
+        b.id,
+        b.start_date,
+        b.end_date,
+        t.name as traveler_name
+      FROM bookings b
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE b.property_id = ? 
+      AND b.id != ?
+      AND b.status IN ('ACCEPTED', 'COMPLETED')
+      AND (
+        (b.start_date <= ? AND b.end_date >= ?) OR
+        (b.start_date <= ? AND b.end_date >= ?) OR
+        (b.start_date >= ? AND b.end_date <= ?)
+      )
+    `, [
+      booking.property_id,
+      id,
+      booking.start_date, booking.start_date,
+      booking.end_date, booking.end_date,
+      booking.start_date, booking.end_date
+    ]);
+
+    if (overlappingAcceptedBookings.length > 0) {
+      const overlap = overlappingAcceptedBookings[0];
       return res.status(409).json({
         success: false,
-        message: 'Cannot accept: Property is already booked for these dates'
+        message: `Cannot accept: Property already has an accepted booking from ${new Date(overlap.start_date).toLocaleDateString()} to ${new Date(overlap.end_date).toLocaleDateString()}`,
+        conflictingBooking: overlap
       });
     }
 
-    // 接受booking
-    await db.query(
-      'UPDATE bookings SET status = ?, accepted_at = NOW() WHERE id = ?',
-      ['ACCEPTED', id]
-    );
+    // Begin transaction
+    await db.query('START TRANSACTION');
 
-    const [updatedBookings] = await db.query(
-      'SELECT * FROM bookings WHERE id = ?',
-      [id]
-    );
-
-    // Publish status update to Kafka for traveler service
     try {
-      await sendBookingStatusUpdate({
-        id: updatedBookings[0].id,
-        propertyId: updatedBookings[0].property_id,
-        travelerId: updatedBookings[0].traveler_id,
-        status: 'ACCEPTED',
-        propertyName: booking.property_name,
-        acceptedAt: updatedBookings[0].accepted_at
-      });
-    } catch (kafkaError) {
-      console.error('Kafka publishing failed for status update:', kafkaError);
-      // Continue - status was updated in DB even if Kafka fails
-    }
+      // Accept the booking
+      await db.query(
+        'UPDATE bookings SET status = ?, accepted_at = NOW() WHERE id = ?',
+        ['ACCEPTED', id]
+      );
 
-    res.json({
-      success: true,
-      message: 'Booking accepted successfully. Property is now blocked for these dates.',
-      booking: updatedBookings[0]
-    });
+      // Automatically cancel all overlapping PENDING bookings
+      if (overlappingPendingBookings.length > 0) {
+        const overlappingIds = overlappingPendingBookings.map(b => b.id);
+        
+        await db.query(
+          `UPDATE bookings 
+           SET status = 'CANCELLED', 
+               cancelled_at = NOW(),
+               cancellation_reason = 'Automatically cancelled due to accepted overlapping booking'
+           WHERE id IN (${overlappingIds.join(',')})`,
+          []
+        );
+
+        console.log(`Automatically cancelled ${overlappingIds.length} overlapping bookings:`, overlappingIds);
+      }
+
+      // Commit transaction
+      await db.query('COMMIT');
+
+      // Get updated booking
+      const [updatedBookings] = await db.query(
+        'SELECT * FROM bookings WHERE id = ?',
+        [id]
+      );
+
+      res.json({
+        success: true,
+        message: 'Booking accepted successfully',
+        booking: updatedBookings[0],
+        cancelledBookings: overlappingPendingBookings.length,
+        details: overlappingPendingBookings.length > 0 
+          ? `${overlappingPendingBookings.length} overlapping booking(s) were automatically cancelled`
+          : null
+      });
+
+    } catch (error) {
+      // Rollback on error
+      await db.query('ROLLBACK');
+      throw error;
+    }
 
   } catch (error) {
     console.error('Accept booking error:', error);
@@ -509,14 +722,14 @@ const acceptBooking = async (req, res) => {
   }
 };
 
-// Cancel Booking (Owner) - 增强：释放日期
+// Cancel Booking (Owner) - Releases the dates
 const cancelBookingOwner = async (req, res) => {
   try {
-    const ownerId = req.session.ownerId;
+    const ownerId = req.user?.id || req.session.ownerId;
     const { id } = req.params;
 
     const [bookings] = await db.query(`
-      SELECT b.*, p.owner_id, p.name as property_name
+      SELECT b.*, p.owner_id 
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
       WHERE b.id = ?
@@ -545,7 +758,14 @@ const cancelBookingOwner = async (req, res) => {
       });
     }
 
-    // 取消booking，释放日期
+    if (booking.status === 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a completed booking'
+      });
+    }
+
+    // Cancel the booking (this releases the dates)
     await db.query(
       'UPDATE bookings SET status = ?, cancelled_at = NOW() WHERE id = ?',
       ['CANCELLED', id]
@@ -556,24 +776,9 @@ const cancelBookingOwner = async (req, res) => {
       [id]
     );
 
-    // Publish status update to Kafka for traveler service
-    try {
-      await sendBookingStatusUpdate({
-        id: updatedBookings[0].id,
-        propertyId: updatedBookings[0].property_id,
-        travelerId: updatedBookings[0].traveler_id,
-        status: 'CANCELLED',
-        propertyName: booking.property_name,
-        cancelledAt: updatedBookings[0].cancelled_at
-      });
-    } catch (kafkaError) {
-      console.error('Kafka publishing failed for status update:', kafkaError);
-      // Continue - status was updated in DB even if Kafka fails
-    }
-
     res.json({
       success: true,
-      message: 'Booking cancelled successfully. Dates have been released.',
+      message: 'Booking cancelled successfully. The dates are now available for new bookings.',
       booking: updatedBookings[0]
     });
 
@@ -591,7 +796,13 @@ module.exports = {
   getTravelerBookings,
   getTravelerHistory,
   cancelBookingTraveler,
-  getOwnerBookings,
+  getOwnerRequests,
+  getOwnerAcceptedBookings,
+  getOwnerCompletedBookings,
+  getOwnerCancelledBookings,
+  getOwnerPreviousBookings,
+  getOwnerRecentRequests,
+  getOwnerStats,
   acceptBooking,
   cancelBookingOwner
 };

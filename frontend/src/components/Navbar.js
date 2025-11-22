@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutTraveler } from '../features/traveler/travelerSlice';
-import { logoutOwner } from '../features/owner/ownerSlice';
+import { logoutOwner } from '../features/owner/OwnerSlice';
 import api from '../services/api';
 
 function Navbar() {
@@ -40,21 +40,21 @@ function Navbar() {
       if (userType === 'traveler') {
         await api.post('/traveler/logout');
         dispatch(logoutTraveler());
-        navigate('/'); // Navigate to homepage
+        navigate('/');
       } else if (userType === 'owner') {
         await api.post('/owner/logout');
         dispatch(logoutOwner());
-        navigate('/'); // Navigate to homepage
+        navigate('/');
       }
     } catch (err) {
       console.error('Logout failed:', err);
       // Still logout on frontend even if API fails
       if (userType === 'traveler') {
         dispatch(logoutTraveler());
-        navigate('/'); // Navigate to homepage
+        navigate('/');
       } else if (userType === 'owner') {
         dispatch(logoutOwner());
-        navigate('/'); // Navigate to homepage
+        navigate('/');
       }
     }
   };
@@ -139,6 +139,11 @@ function Navbar() {
               <li className="nav-item">
                 <Link className="nav-link" to="/owner/properties">
                   My Properties
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link" to="/owner/requests">
+                  Requests
                 </Link>
               </li>
               <li className="nav-item">

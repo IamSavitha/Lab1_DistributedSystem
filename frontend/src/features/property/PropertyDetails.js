@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchPropertyById, clearPropertyDetail } from '../../features/property/propertySlice';
-import { createBooking } from '../../features/booking/bookingSlice';
+import { createBooking, clearSuccessMessage } from '../../features/booking/bookingSlice';
 import { addFavorite, removeFavorite, fetchFavorites } from '../../features/booking/bookingSlice';
 import AgentButton from '../../components/AgentButton';
 
@@ -25,6 +25,9 @@ function PropertyDetails() {
   useEffect(() => {
     dispatch(fetchPropertyById(id));
     dispatch(fetchFavorites());
+    
+    // ✅ Clear any previous booking success messages
+    dispatch(clearSuccessMessage());
     
     return () => {
       dispatch(clearPropertyDetail());
@@ -81,9 +84,9 @@ function PropertyDetails() {
 
     try {
       await dispatch(createBooking({
-        propertyId: parseInt(id),  // Convert to number
-        startDate: startDate,       // Changed from checkIn
-        endDate: endDate,          // Changed from checkOut
+        propertyId: parseInt(id),
+        startDate: startDate,
+        endDate: endDate,
         guests: parseInt(guests),
       })).unwrap();
       
@@ -138,7 +141,8 @@ function PropertyDetails() {
     <main className="container mt-5" role="main">
       {successMessage && (
         <div className="alert alert-success" role="alert">
-          {successMessage} Redirecting to your bookings...
+          {successMessage}
+          {successMessage === 'Booking created successfully!' && ' Redirecting to your bookings...'}
         </div>
       )}
 

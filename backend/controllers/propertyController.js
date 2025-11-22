@@ -165,7 +165,7 @@ const getPropertyById = async (req, res) => {
  */
 const createProperty = async (req, res) => {
   try {
-    const ownerId = req.ownerId;
+    const ownerId = req.session.ownerId;
     if (!ownerId) {
       return res.status(401).json({ success: false, message: 'Owner not authenticated' });
     }
@@ -299,7 +299,7 @@ const createProperty = async (req, res) => {
  */
 const updateProperty = async (req, res) => {
   try {
-    const ownerId = req.ownerId;
+    const ownerId = req.session.ownerId;
     if (!ownerId) return res.status(401).json({ success: false, message: 'Owner not authenticated' });
 
     const { id } = req.params;
@@ -415,7 +415,7 @@ const updateProperty = async (req, res) => {
  */
 const deleteProperty = async (req, res) => {
   try {
-    const ownerId = req.ownerId;
+    const ownerId = req.session.ownerId;
     if (!ownerId) return res.status(401).json({ success: false, message: 'Owner not authenticated' });
 
     const { id } = req.params;
@@ -441,7 +441,7 @@ const deleteProperty = async (req, res) => {
  */
 const getOwnerProperties = async (req, res) => {
   try {
-    const ownerId = req.ownerId;
+    const ownerId = req.session.ownerId;
     if (!ownerId) {
       return res.status(401).json({ success: false, message: 'Owner not authenticated' });
     }

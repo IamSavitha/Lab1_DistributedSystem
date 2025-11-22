@@ -1,5 +1,4 @@
 const bcrypt = require('bcryptjs');
-const db = require('../config/database');
 const { isValidEmail, isValidStateCode } = require('../utils/validation');
 const { generateToken } = require('../utils/jwt');
 
@@ -7,8 +6,8 @@ const { generateToken } = require('../utils/jwt');
 const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const db = req.app.get('db');
 
-    // Validate required fields
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -16,7 +15,6 @@ const signup = async (req, res) => {
       });
     }
 
-    // Validate email format
     if (!isValidEmail(email)) {
       return res.status(400).json({
         success: false,
@@ -24,7 +22,6 @@ const signup = async (req, res) => {
       });
     }
 
-    // Validate password length
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -32,7 +29,6 @@ const signup = async (req, res) => {
       });
     }
 
-    // Check if email already exists
     const [existingUsers] = await db.query(
       'SELECT id FROM travelers WHERE email = ?',
       [email]
@@ -45,16 +41,17 @@ const signup = async (req, res) => {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert traveler
     const [result] = await db.query(
       'INSERT INTO travelers (name, email, password) VALUES (?, ?, ?)',
       [name, email, hashedPassword]
     );
 
-    // Get created traveler
+    // Set session
+    req.session.travelerId = result.insertId;
+    req.session.userType = 'traveler';
+
     const [travelers] = await db.query(
       'SELECT id, name, email, created_at FROM travelers WHERE id = ?',
       [result.insertId]
@@ -79,8 +76,8 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const db = req.app.get('db');
 
-    // Validate required fields
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -88,7 +85,6 @@ const login = async (req, res) => {
       });
     }
 
-    // Find traveler
     const [travelers] = await db.query(
       'SELECT * FROM travelers WHERE email = ?',
       [email]
@@ -103,7 +99,6 @@ const login = async (req, res) => {
 
     const traveler = travelers[0];
 
-    // Compare password
     const isValidPassword = await bcrypt.compare(password, traveler.password);
 
     if (!isValidPassword) {
@@ -113,7 +108,7 @@ const login = async (req, res) => {
       });
     }
 
-    // Set session (keep for backward compatibility)
+    // Set session
     req.session.travelerId = traveler.id;
     req.session.userType = 'traveler';
 
@@ -124,7 +119,6 @@ const login = async (req, res) => {
       userType: 'traveler'
     });
 
-    // Remove password from response
     delete traveler.password;
 
     res.json({
@@ -164,10 +158,19 @@ const logout = (req, res) => {
 // Get Traveler Profile
 const getProfile = async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
+    const db = req.app.get('db');
+    // 从 JWT token 获取 travelerId (优先)
+    const travelerId = req.user?.id || req.session?.travelerId;
+
+    if (!travelerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
 
     const [travelers] = await db.query(
-      'SELECT id, name, email, phone, profile_picture, city, state, country, about, languages, gender, created_at FROM travelers WHERE id = ?',
+      'SELECT id, name, email, location, phone, city, state, country, about, languages, gender, profile_picture, created_at FROM travelers WHERE id = ?',
       [travelerId]
     );
 
@@ -195,7 +198,17 @@ const getProfile = async (req, res) => {
 // Update Traveler Profile
 const updateProfile = async (req, res) => {
   try {
-    const travelerId = req.session.travelerId;
+    const db = req.app.get('db');
+    // 从 JWT token 获取 travelerId (优先)
+    const travelerId = req.user?.id || req.session?.travelerId;
+
+    if (!travelerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
     const {
       name,
       phone,
@@ -208,7 +221,6 @@ const updateProfile = async (req, res) => {
       gender
     } = req.body;
 
-    // Validate state code if provided
     if (state && !isValidStateCode(state)) {
       return res.status(400).json({
         success: false,
@@ -216,7 +228,6 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    // Build update query dynamically
     const updates = [];
     const values = [];
 
@@ -271,9 +282,8 @@ const updateProfile = async (req, res) => {
       values
     );
 
-    // Get updated profile
     const [travelers] = await db.query(
-      'SELECT id, name, email, phone, profile_picture, city, state, country, about, languages, gender, created_at, updated_at FROM travelers WHERE id = ?',
+      'SELECT id, name, email, location, phone, city, state, country, about, languages, gender, profile_picture, created_at, updated_at FROM travelers WHERE id = ?',
       [travelerId]
     );
 
@@ -295,14 +305,87 @@ const updateProfile = async (req, res) => {
 // Upload profile picture
 const uploadProfileImage = async (req, res) => {
   try {
-    if (!req.session.travelerId) return res.status(401).json({ success:false, message:'Unauthorized' });
-    if (!req.file) return res.status(400).json({ success:false, message:'No file uploaded' });
+    const db = req.app.get('db');
+    const travelerId = req.user?.id || req.session?.travelerId;
+    
+    if (!travelerId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Unauthorized' 
+      });
+    }
 
-    const db = require('../config/database');
-    await db.query('UPDATE travelers SET profile_picture=? WHERE id=?', [req.file.buffer.toString('base64'), req.session.travelerId]);
-    res.json({ success: true, message: 'Profile picture updated' });
-  } catch (e) {
-    res.status(500).json({ success:false, message:'Upload failed' });
+    const { imageData } = req.body;
+
+    if (!imageData) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No image data provided' 
+      });
+    }
+
+    if (!imageData.match(/^data:image\/(jpeg|jpg|png|gif|webp);base64,/)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid image format. Please upload JPEG, PNG, GIF, or WebP' 
+      });
+    }
+
+    if (imageData.length > 2 * 1024 * 1024) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Image too large. Maximum size is 1.5MB' 
+      });
+    }
+
+    await db.query(
+      'UPDATE travelers SET profile_picture = ? WHERE id = ?', 
+      [imageData, travelerId]
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'Profile picture updated',
+      imageUrl: imageData
+    });
+  } catch (error) {
+    console.error('Upload profile image error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Upload failed' 
+    });
+  }
+};
+
+// Delete profile picture
+const deleteProfileImage = async (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const travelerId = req.user?.id || req.session.travelerId;
+
+    if (!travelerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    await db.query(
+      'UPDATE travelers SET profile_picture = NULL WHERE id = ?',
+      [travelerId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Profile image deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete profile image error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete profile image'
+    });
   }
 };
 
@@ -312,5 +395,6 @@ module.exports = {
   logout,
   getProfile,
   updateProfile,
-  uploadProfileImage
+  uploadProfileImage,
+  deleteProfileImage
 };

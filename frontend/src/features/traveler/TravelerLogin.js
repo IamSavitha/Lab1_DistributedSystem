@@ -21,12 +21,9 @@ function TravelerLogin() {
         password,
       });
 
-      // Response contains: { success, message, token, traveler }
-      // Dispatch login action to Redux store with token and traveler info
-      dispatch(loginTraveler({
-        traveler: response.data.traveler,
-        token: response.data.token
-      }));
+      // Redux slice会自动保存token到localStorage (使用'travelerToken' key)
+      // 所以这里只需要dispatch就够了
+      dispatch(loginTraveler(response.data));
       
       alert('Login successful');
       

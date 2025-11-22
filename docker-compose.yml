@@ -35,9 +35,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      # Removed schema.sql mount to avoid WSL2 path issues
-      # Database schema already initialized, can be reapplied manually if needed
-      # - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
     networks:
       - airbnb-network
     healthcheck:
@@ -133,11 +131,6 @@ services:
       MONGO_URL: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-mongopassword}@mongodb:27017/${MONGO_DB:-airbnb_sessions}?authSource=admin
       KAFKA_BROKER: kafka:9093
       SESSION_SECRET: ${SESSION_SECRET:-your-secret-key-change-in-production}
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-    # Removed uploads volume mount to avoid WSL2 path issues
-    # Files will be stored inside container, which is fine for development/testing
-    # volumes:
-    #   - ./backend/uploads:/app/uploads
     networks:
       - airbnb-network
     healthcheck:

@@ -1,10 +1,7 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { isValidEmail } = require('../utils/validation');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-const JWT_EXPIRY = '24h';
+const { generateToken } = require('../utils/jwt');
 
 // Owner Signup
 const signup = async (req, res) => {
@@ -51,28 +48,14 @@ const signup = async (req, res) => {
       [name, email, location, hashedPassword]
     );
 
-    const ownerId = result.insertId;
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        ownerId: ownerId,
-        userType: 'owner',
-        email: email
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRY }
-    );
-
     const [owners] = await db.query(
       'SELECT id, name, email, location, created_at FROM owners WHERE id = ?',
-      [ownerId]
+      [result.insertId]
     );
 
     res.status(201).json({
       success: true,
       message: 'Owner account created successfully',
-      token: token, // JWT token for Redux
       owner: owners[0]
     });
 
@@ -120,24 +103,23 @@ const login = async (req, res) => {
       });
     }
 
+    req.session.ownerId = owner.id;
+    req.session.userType = 'owner';
+
     // Generate JWT token
-    const token = jwt.sign(
-      { 
-        ownerId: owner.id,
-        userType: 'owner',
-        email: owner.email
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRY }
-    );
+    const token = generateToken({
+      id: owner.id,
+      email: owner.email,
+      userType: 'owner'
+    });
 
     delete owner.password;
 
     res.json({
       success: true,
       message: 'Login successful',
-      token: token, // JWT token for Redux
-      owner
+      owner,
+      token
     });
 
   } catch (error) {
@@ -170,10 +152,19 @@ const logout = (req, res) => {
 // Get Owner Profile
 const getProfile = async (req, res) => {
   try {
-    const ownerId = req.ownerId || req.session.ownerId;
+    // ✅ 从JWT token获取ownerId (优先)
+    // authMiddleware会将decoded token放在req.user中
+    const ownerId = req.user?.id || req.session?.ownerId;
+
+    if (!ownerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
 
     const [owners] = await db.query(
-      'SELECT id, name, email, location, profile_image, about, created_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, phone, profile_picture, about, created_at FROM owners WHERE id = ?',
       [ownerId]
     );
 
@@ -201,7 +192,16 @@ const getProfile = async (req, res) => {
 // Update Owner Profile
 const updateProfile = async (req, res) => {
   try {
-    const ownerId = req.ownerId || req.session.ownerId;
+    // ✅ 从JWT token获取ownerId (优先)
+    const ownerId = req.user?.id || req.session?.ownerId;
+
+    if (!ownerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
     const { name, phone, profilePicture, about, location } = req.body;
 
     const updates = [];
@@ -211,8 +211,12 @@ const updateProfile = async (req, res) => {
       updates.push('name = ?');
       values.push(name);
     }
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(phone);
+    }
     if (profilePicture !== undefined) {
-      updates.push('profile_image = ?');
+      updates.push('profile_picture = ?');
       values.push(profilePicture);
     }
     if (about !== undefined) {
@@ -239,7 +243,7 @@ const updateProfile = async (req, res) => {
     );
 
     const [owners] = await db.query(
-      'SELECT id, name, email, location, profile_image, about, created_at, updated_at FROM owners WHERE id = ?',
+      'SELECT id, name, email, location, phone, profile_picture, about, created_at, updated_at FROM owners WHERE id = ?',
       [ownerId]
     );
 

@@ -27,6 +27,15 @@ function TravelerFavorites() {
     }
   };
 
+  // Get image URL from property
+  const getImageUrl = (property) => {
+    // Try multiple possible field names
+    return property.imageUrl || 
+           property.image_url || 
+           (property.images && property.images.length > 0 ? property.images[0] : null) ||
+           'https://via.placeholder.com/400x200?text=No+Image';
+  };
+
   return (
     <div className="container mt-4">
       {/* Header */}
@@ -75,27 +84,27 @@ function TravelerFavorites() {
           <div className="row g-4">
             {favorites.map((favorite) => {
               const property = favorite.property || favorite;
+              const imageUrl = getImageUrl(property);
+              const propertyName = property.name || property.title;
+              const propertyLocation = property.location || property.city;
+              const propertyPrice = property.price || property.pricePerNight || property.price_per_night;
+              const propertyGuests = property.maxGuests || property.max_guests || property.guests;
+              
               return (
                 <div key={favorite.id || property.id} className="col-md-4">
                   <div className="card h-100 shadow-sm">
-                    {property.images && property.images.length > 0 ? (
-                      <img
-                        src={property.images[0]}
-                        className="card-img-top"
-                        alt={property.title}
-                        style={{ height: '200px', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div
-                        className="card-img-top bg-secondary d-flex align-items-center justify-content-center"
-                        style={{ height: '200px' }}
-                      >
-                        <span className="text-white">No Image</span>
-                      </div>
-                    )}
+                    <img
+                      src={imageUrl}
+                      className="card-img-top"
+                      alt={propertyName}
+                      style={{ height: '200px', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/400x200?text=No+Image';
+                      }}
+                    />
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h5 className="card-title mb-0">{property.title}</h5>
+                        <h5 className="card-title mb-0">{propertyName}</h5>
                         <button
                           className="btn btn-link p-0 text-danger"
                           onClick={() => handleRemoveFavorite(favorite.propertyId || property.id)}
@@ -105,17 +114,18 @@ function TravelerFavorites() {
                         </button>
                       </div>
                       <p className="card-text text-muted small mb-2">
-                        <i className="bi bi-geo-alt"></i> {property.location}
+                        <i className="bi bi-geo-alt"></i> {propertyLocation}
                       </p>
                       <p className="card-text">
-                        {property.description?.substring(0, 100)}...
+                        {property.description?.substring(0, 100)}
+                        {property.description?.length > 100 ? '...' : ''}
                       </p>
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <span className="text-primary fw-bold">
-                          ${property.pricePerNight}/night
+                          ${propertyPrice}/night
                         </span>
                         <span className="text-muted small">
-                          <i className="bi bi-people"></i> {property.guests} guests
+                          <i className="bi bi-people"></i> {propertyGuests} guests
                         </span>
                       </div>
                       <button
@@ -125,10 +135,10 @@ function TravelerFavorites() {
                         View Details
                       </button>
                     </div>
-                    {favorite.addedAt && (
+                    {(favorite.favoritedAt || favorite.favorited_at || favorite.addedAt) && (
                       <div className="card-footer bg-light">
                         <small className="text-muted">
-                          Added on {new Date(favorite.addedAt).toLocaleDateString()}
+                          Added on {new Date(favorite.favoritedAt || favorite.favorited_at || favorite.addedAt).toLocaleDateString()}
                         </small>
                       </div>
                     )}

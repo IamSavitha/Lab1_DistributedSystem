@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
-import './OwnerBookings.css';
+import './OwnerRequests.css';
 
-const OwnerBookings = () => {
-  const [activeTab, setActiveTab] = useState('accepted');
+const OwnerRequests = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,30 +17,14 @@ const OwnerBookings = () => {
   const { token } = useSelector((state) => state.owner);
 
   useEffect(() => {
-    fetchBookings();
-  }, [activeTab, pagination.page]);
+    fetchRequests();
+  }, [pagination.page]);
 
-  const fetchBookings = async () => {
+  const fetchRequests = async () => {
     try {
       setLoading(true);
-      let endpoint = '';
-      
-      switch (activeTab) {
-        case 'accepted':
-          endpoint = '/api/bookings/owner/accepted';
-          break;
-        case 'completed':
-          endpoint = '/api/bookings/owner/completed';
-          break;
-        case 'cancelled':
-          endpoint = '/api/bookings/owner/cancelled';
-          break;
-        default:
-          endpoint = '/api/bookings/owner/accepted';
-      }
-
       const response = await axios.get(
-        `http://localhost:5001${endpoint}?page=${pagination.page}&limit=${pagination.limit}`,
+        `http://localhost:5001/api/bookings/owner/requests?page=${pagination.page}&limit=${pagination.limit}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -58,20 +41,50 @@ const OwnerBookings = () => {
         }));
       }
     } catch (err) {
-      console.error('Error fetching bookings:', err);
-      setError(err.response?.data?.message || 'Failed to fetch bookings');
+      console.error('Error fetching requests:', err);
+      setError(err.response?.data?.message || 'Failed to fetch booking requests');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1 when changing tabs
+  const handleAcceptBooking = async (bookingId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [bookingId]: 'accepting' }));
+      
+      const response = await axios.put(
+        `http://localhost:5001/api/bookings/owner/${bookingId}/accept`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Remove from list since it's no longer PENDING
+        setBookings(prevBookings => prevBookings.filter(b => b.id !== bookingId));
+        
+        let message = 'Booking accepted successfully!';
+        if (response.data.cancelledBookings > 0) {
+          message += `\n${response.data.cancelledBookings} overlapping booking(s) were automatically cancelled.`;
+        }
+        alert(message);
+        
+        // Refresh to update pagination
+        fetchRequests();
+      }
+    } catch (err) {
+      console.error('Error accepting booking:', err);
+      alert(err.response?.data?.message || 'Failed to accept booking');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [bookingId]: null }));
+    }
   };
 
   const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) {
+    if (!window.confirm('Are you sure you want to cancel this booking request?')) {
       return;
     }
 
@@ -89,8 +102,12 @@ const OwnerBookings = () => {
       );
 
       if (response.data.success) {
-        alert('Booking cancelled successfully!');
-        fetchBookings(); // Refresh the list
+        // Remove from list since it's no longer PENDING
+        setBookings(prevBookings => prevBookings.filter(b => b.id !== bookingId));
+        alert('Booking request cancelled successfully!');
+        
+        // Refresh to update pagination
+        fetchRequests();
       }
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -114,94 +131,36 @@ const OwnerBookings = () => {
     return `${month}/${day}/${year}`;
   };
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'ACCEPTED':
-        return 'status-accepted';
-      case 'CANCELLED':
-        return 'status-cancelled';
-      case 'COMPLETED':
-        return 'status-completed';
-      default:
-        return '';
-    }
-  };
-
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, page: newPage }));
     }
   };
 
-  const renderBookingActions = (booking) => {
-    if (booking.status === 'ACCEPTED') {
-      return (
-        <div className="booking-actions">
-          <button
-            className="btn btn-cancel"
-            onClick={() => handleCancelBooking(booking.id)}
-            disabled={actionLoading[booking.id]}
-          >
-            {actionLoading[booking.id] === 'cancelling' ? 'Processing...' : 'Cancel Booking'}
-          </button>
-        </div>
-      );
-    } else {
-      return (
-        <div className="booking-actions">
-          <span className="action-disabled">No actions available</span>
-        </div>
-      );
-    }
-  };
-
   if (loading && bookings.length === 0) {
     return (
-      <div className="owner-bookings-container">
-        <div className="loading">Loading bookings...</div>
+      <div className="owner-requests-container">
+        <div className="loading">Loading booking requests...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="owner-bookings-container">
+      <div className="owner-requests-container">
         <div className="error-message">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="owner-bookings-container">
-      <h1>Bookings</h1>
-      <p className="subtitle">View all your property bookings</p>
-
-      {/* Tabs */}
-      <div className="tabs">
-        <button
-          className={`tab ${activeTab === 'accepted' ? 'active' : ''}`}
-          onClick={() => handleTabChange('accepted')}
-        >
-          Accepted
-        </button>
-        <button
-          className={`tab ${activeTab === 'completed' ? 'active' : ''}`}
-          onClick={() => handleTabChange('completed')}
-        >
-          Completed
-        </button>
-        <button
-          className={`tab ${activeTab === 'cancelled' ? 'active' : ''}`}
-          onClick={() => handleTabChange('cancelled')}
-        >
-          Cancelled
-        </button>
-      </div>
-
-      {/* Bookings List */}
+    <div className="owner-requests-container">
+      <h1>Booking Requests</h1>
+      <p className="subtitle">Pending booking requests for your properties</p>
+      
       {bookings.length === 0 ? (
         <div className="no-bookings">
-          <p>No {activeTab} bookings found.</p>
+          <p>No pending booking requests at the moment.</p>
         </div>
       ) : (
         <>
@@ -210,8 +169,8 @@ const OwnerBookings = () => {
               <div key={booking.id} className="booking-card">
                 <div className="booking-header">
                   <h3>{booking.property_name}</h3>
-                  <span className={`status-badge ${getStatusClass(booking.status)}`}>
-                    {booking.status}
+                  <span className="status-badge status-pending">
+                    PENDING
                   </span>
                 </div>
 
@@ -253,19 +212,10 @@ const OwnerBookings = () => {
                     <span className="detail-value price">${booking.total_price}</span>
                   </div>
 
-                  {activeTab === 'accepted' && (
-                    <div className="detail-row">
-                      <span className="detail-label">Accepted on:</span>
-                      <span className="detail-value">{formatDate(booking.accepted_at)}</span>
-                    </div>
-                  )}
-
-                  {activeTab === 'cancelled' && (
-                    <div className="detail-row">
-                      <span className="detail-label">Cancelled on:</span>
-                      <span className="detail-value">{formatDate(booking.cancelled_at)}</span>
-                    </div>
-                  )}
+                  <div className="detail-row">
+                    <span className="detail-label">Requested on:</span>
+                    <span className="detail-value">{formatDate(booking.created_at)}</span>
+                  </div>
 
                   {booking.special_requests && (
                     <div className="detail-row special-requests">
@@ -275,7 +225,22 @@ const OwnerBookings = () => {
                   )}
                 </div>
 
-                {renderBookingActions(booking)}
+                <div className="booking-actions">
+                  <button
+                    className="btn btn-accept"
+                    onClick={() => handleAcceptBooking(booking.id)}
+                    disabled={actionLoading[booking.id]}
+                  >
+                    {actionLoading[booking.id] === 'accepting' ? 'Processing...' : 'Accept'}
+                  </button>
+                  <button
+                    className="btn btn-cancel"
+                    onClick={() => handleCancelBooking(booking.id)}
+                    disabled={actionLoading[booking.id]}
+                  >
+                    {actionLoading[booking.id] === 'cancelling' ? 'Processing...' : 'Cancel'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -310,4 +275,4 @@ const OwnerBookings = () => {
   );
 };
 
-export default OwnerBookings;
+export default OwnerRequests;

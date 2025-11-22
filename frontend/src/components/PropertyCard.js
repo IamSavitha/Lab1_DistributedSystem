@@ -1,14 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { addFavorite, removeFavorite } from '../features/booking/bookingSlice';
 import '../styles/components/PropertyCard.css';
 
 // Property Card Component - displays property information in search results
 function PropertyCard({ property }) {
+  const dispatch = useDispatch();
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Get favorites from Redux
+  const { favorites } = useSelector((state) => state.booking);
 
   // Handle both MongoDB (_id) and MySQL (id) formats
   const propertyId = property._id || property.id;
+
+  // Check if current property is in favorites
+  const isFavorite = favorites.some(
+    fav => {
+      const favId = fav.propertyId || fav.property_id || fav.id;
+      return parseInt(favId) === parseInt(propertyId);
+    }
+  );
 
   // Handle both naming conventions (camelCase and snake_case)
   const title = property.title || property.name;
@@ -25,10 +39,25 @@ function PropertyCard({ property }) {
     ? property.images[0]
     : property.imageUrl || property.image_url || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80';
 
-  const handleFavoriteClick = (e) => {
+  const handleFavoriteClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
+    
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    try {
+      if (isFavorite) {
+        await dispatch(removeFavorite(propertyId)).unwrap();
+      } else {
+        await dispatch(addFavorite(propertyId)).unwrap();
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      alert('Failed to update favorites. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -54,11 +83,18 @@ function PropertyCard({ property }) {
           <button
             className={`property-card-heart ${isFavorite ? 'active' : ''}`}
             onClick={handleFavoriteClick}
+            disabled={isProcessing}
             aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"/>
-            </svg>
+            {isProcessing ? (
+              <svg className="spinner" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="3" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"/>
+              </svg>
+            )}
           </button>
 
           {/* Property Type Badge */}

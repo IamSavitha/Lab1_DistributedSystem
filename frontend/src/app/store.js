@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import travelerReducer from '../features/traveler/travelerSlice';  
-import ownerReducer from '../features/owner/ownerSlice';
+import travelerReducer from '../features/traveler/travelerSlice';
+import ownerReducer from '../features/owner/OwnerSlice';
 import propertyReducer from '../features/property/propertySlice';
 import bookingReducer from '../features/booking/bookingSlice';
 

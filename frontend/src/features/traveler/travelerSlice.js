@@ -1,14 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-
-// Initialize from localStorage on page load
-const savedToken = localStorage.getItem('traveler_token');
-const savedTravelerInfo = localStorage.getItem('traveler_info');
+import { jwtDecode } from 'jwt-decode';
 
 const initialState = {
-  travelerInfo: savedTravelerInfo ? JSON.parse(savedTravelerInfo) : null,
-  token: savedToken, // JWT token stored in Redux (Lab 2 Part 4 requirement)
-  isLoggedIn: !!savedToken,
+  travelerInfo: null,
+  token: localStorage.getItem('travelerToken') || null,
+  isLoggedIn: !!localStorage.getItem('travelerToken'),
   loading: false,
   error: null,
 };
@@ -35,27 +32,39 @@ const travelerSlice = createSlice({
   initialState,
   reducers: {
     loginTraveler(state, action) {
-      state.travelerInfo = action.payload.traveler || action.payload;
-      state.token = action.payload.token; // Store JWT token in Redux
+      const { traveler, token } = action.payload;
+      state.travelerInfo = traveler;
+      state.token = token;
       state.isLoggedIn = true;
-      
-      // Also store in localStorage for API requests and persistence
-      if (action.payload.token) {
-        localStorage.setItem('traveler_token', action.payload.token);
-      }
-      if (action.payload.traveler || action.payload) {
-        const travelerData = action.payload.traveler || action.payload;
-        localStorage.setItem('traveler_info', JSON.stringify(travelerData));
+
+      // Store token in localStorage
+      if (token) {
+        localStorage.setItem('travelerToken', token);
       }
     },
     logoutTraveler(state) {
       state.travelerInfo = null;
       state.token = null;
       state.isLoggedIn = false;
-      
-      // Clear from localStorage
-      localStorage.removeItem('traveler_token');
-      localStorage.removeItem('traveler_info');
+
+      // Remove token from localStorage
+      localStorage.removeItem('travelerToken');
+    },
+    setTravelerFromToken(state, action) {
+      const token = action.payload;
+      if (token) {
+        try {
+          const decoded = jwtDecode(token);
+          state.travelerInfo = { id: decoded.id, email: decoded.email };
+          state.token = token;
+          state.isLoggedIn = true;
+        } catch (error) {
+          // Invalid token
+          state.token = null;
+          state.isLoggedIn = false;
+          localStorage.removeItem('travelerToken');
+        }
+      }
     },
   },
   extraReducers: (builder) => {
@@ -74,5 +83,5 @@ const travelerSlice = createSlice({
   },
 });
 
-export const { loginTraveler, logoutTraveler } = travelerSlice.actions;
+export const { loginTraveler, logoutTraveler, setTravelerFromToken } = travelerSlice.actions;
 export default travelerSlice.reducer;

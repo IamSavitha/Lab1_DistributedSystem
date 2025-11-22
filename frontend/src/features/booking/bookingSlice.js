@@ -38,6 +38,19 @@ export const fetchBookingHistory = createAsyncThunk(
   }
 );
 
+// ✅ 新增：取消 booking
+export const cancelBooking = createAsyncThunk(
+  'booking/cancelBooking',
+  async (bookingId, { rejectWithValue }) => {
+    try {
+      const response = await bookingAPI.cancelBooking(bookingId);
+      return { bookingId, ...response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to cancel booking');
+    }
+  }
+);
+
 export const addFavorite = createAsyncThunk(
   'booking/addFavorite',
   async (propertyId, { rejectWithValue }) => {
@@ -108,10 +121,9 @@ const bookingSlice = createSlice({
       })
       .addCase(createBooking.fulfilled, (state, action) => {
         state.loading = false;
-        // Handle both {booking: {...}} and direct booking object
         const booking = action.payload.booking || action.payload;
         state.currentBooking = booking;
-        state.bookings.unshift(booking); // Add to beginning
+        state.bookings.unshift(booking);
         state.successMessage = 'Booking created successfully!';
       })
       .addCase(createBooking.rejected, (state, action) => {
@@ -144,6 +156,25 @@ const bookingSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // ✅ Cancel booking
+      .addCase(cancelBooking.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(cancelBooking.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update booking status to 'cancelled'
+        const bookingId = action.payload.bookingId;
+        const bookingIndex = state.bookings.findIndex(b => b.id === bookingId);
+        if (bookingIndex !== -1) {
+          state.bookings[bookingIndex].status = 'cancelled';
+        }
+        state.successMessage = 'Booking cancelled successfully!';
+      })
+      .addCase(cancelBooking.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       // Add favorite
       .addCase(addFavorite.pending, (state) => {
         state.loading = true;
@@ -167,8 +198,12 @@ const bookingSlice = createSlice({
       })
       .addCase(removeFavorite.fulfilled, (state, action) => {
         state.loading = false;
+        const removedPropertyId = parseInt(action.payload);
         state.favorites = state.favorites.filter(
-          (fav) => fav.propertyId !== action.payload
+          (fav) => {
+            const favPropertyId = fav.propertyId || fav.property_id || fav.id;
+            return parseInt(favPropertyId) !== removedPropertyId;
+          }
         );
         state.successMessage = 'Removed from favorites!';
       })

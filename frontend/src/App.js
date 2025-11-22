@@ -19,6 +19,7 @@ import OwnerLogin from './features/owner/OwnerLogin';
 import OwnerSignup from './features/owner/OwnerSignup';
 import OwnerDashboard from './features/owner/OwnerDashboard';
 import OwnerProperties from './features/owner/OwnerProperties';
+import OwnerRequests from './features/owner/OwnerRequests';  // 新增
 import OwnerBookings from './features/owner/OwnerBookings';
 import OwnerProfile from './features/owner/OwnerProfile';
 import OwnerPropertyForm from './features/owner/OwnerPropertyForm';
@@ -77,6 +78,7 @@ function App() {
           <Route path="/owner/signup" element={<OwnerSignup />} />
           <Route path="/owner/dashboard" element={<OwnerDashboard />} />
           <Route path="/owner/properties" element={<OwnerProperties />} />
+          <Route path="/owner/requests" element={<OwnerRequests />} />  {/* 新增 */}
           <Route path="/owner/bookings" element={<OwnerBookings />} />
           <Route path="/owner/profile" element={<OwnerProfile />} />
           <Route path="/owner/properties/new" element={<OwnerPropertyForm />} />
