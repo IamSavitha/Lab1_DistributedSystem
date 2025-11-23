@@ -1,4 +1,4 @@
-services:
+﻿services:
   # MongoDB Database (for sessions)
   mongodb:
     image: mongo:7.0
@@ -35,7 +35,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-
     networks:
       - airbnb-network
     healthcheck:
@@ -140,6 +139,35 @@ services:
       retries: 3
       start_period: 40s
 
+  # AI Agent Service
+  ai-agent:
+    build:
+      context: ./ai-agent
+      dockerfile: Dockerfile
+    container_name: airbnb-ai-agent
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-airbnb_user}
+      DB_PASSWORD: ${DB_PASSWORD:-password123}
+      DB_NAME: ${DB_NAME:-airbnb_db}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-placeholder}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-tvly-placeholder}
+    networks:
+      - airbnb-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # Frontend Service
   frontend:
     build:
@@ -149,6 +177,7 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+      - ai-agent
     ports:
       - "3000:80"
     networks:

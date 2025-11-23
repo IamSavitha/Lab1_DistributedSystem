@@ -1,16 +1,20 @@
-# FastAPI Web Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+﻿# FastAPI Web Framework
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
 pydantic==2.5.0
 python-dotenv==1.0.0
 
-# LangChain and AI
-langchain==0.1.0
-langchain-openai==0.0.2
-langchain-community==0.0.10
+# LangChain and AI - 使用能工作的版本
+langchain==0.1.9
+langchain-openai==0.0.8
+langchain-community==0.0.24
+langchain-core==0.1.53
 
-# Tavily Search
-tavily-python==0.3.0
+# Tavily Search - 使用能工作的版本
+tavily-python==0.5.0
+
+# Tiktoken - 使用能工作的版本
+tiktoken==0.7.0
 
 # MySQL Connection
 mysql-connector-python==8.2.0
@@ -21,3 +25,4 @@ aiohttp==3.9.1
 
 # Utilities
 python-dateutil==2.8.2
+requests>=2.31.0
