@@ -14,6 +14,13 @@ from dotenv import load_dotenv
 
 import agent
 import database
+from fastapi import FastAPI
+
+app = FastAPI()
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 load_dotenv()
 

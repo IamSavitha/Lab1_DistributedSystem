@@ -11,8 +11,8 @@
 
 1. [Executive Summary](#executive-summary)
 2. [Architecture Overview](#architecture-overview)
-3. [Part 1: Docker & Kubernetes (15 points)](#part-1-docker--kubernetes-15-points)
-4. [Part 2: Kafka Integration (10 points)](#part-2-kafka-integration-10-points)
+3. [Part 1: Docker & Kubernetes](#part-1-docker--kubernetes-15-points)
+4. [Part 2: Kafka Integration](#part-2-kafka-integration-10-points)
 5. [Part 3: MongoDB Integration (5 points)](#part-3-mongodb-integration-5-points)
 6. [Part 4: Redux Implementation (5 points)](#part-4-redux-implementation-5-points)
 7. [Part 5: JMeter Performance Testing (5 points)](#part-5-jmeter-performance-testing-5-points)
@@ -33,8 +33,6 @@ This report documents the implementation of Lab 2 enhancements to the Airbnb pro
 - **MongoDB Integration**: Added session storage with encryption
 - **Redux**: Verified comprehensive state management implementation
 - **JMeter Testing**: Created performance test plans for load testing with 100-500 concurrent users
-
-### Total Points: 40/40 (100%)
 
 ---
 

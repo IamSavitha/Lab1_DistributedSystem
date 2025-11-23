@@ -162,11 +162,11 @@
     networks:
       - airbnb-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   # Frontend Service
   frontend:
@@ -176,18 +176,20 @@
     container_name: airbnb-frontend
     restart: unless-stopped
     depends_on:
-      - backend
-      - ai-agent
+      backend:
+        condition: service_healthy
+      ai-agent:
+        condition: service_healthy
     ports:
       - "3000:80"
     networks:
       - airbnb-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 20s
 
 networks:
   airbnb-network:
