@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import './OwnerBookings.css';
@@ -41,7 +41,7 @@ const OwnerBookings = () => {
       }
 
       const response = await axios.get(
-        `http://localhost:5001${endpoint}?page=${pagination.page}&limit=${pagination.limit}`,
+        `http://54.185.125.23:30344${endpoint}?page=${pagination.page}&limit=${pagination.limit}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -79,7 +79,7 @@ const OwnerBookings = () => {
       setActionLoading(prev => ({ ...prev, [bookingId]: 'cancelling' }));
       
       const response = await axios.put(
-        `http://localhost:5001/api/bookings/owner/${bookingId}/cancel`,
+        `http://54.185.125.23:30344/api/bookings/owner/${bookingId}/cancel`,
         {},
         {
           headers: {
@@ -311,3 +311,4 @@ const OwnerBookings = () => {
 };
 
 export default OwnerBookings;
+

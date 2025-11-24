@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -29,16 +29,16 @@ const OwnerDashboard = () => {
       };
 
       // Fetch properties count
-      const propertiesRes = await axios.get('http://localhost:5001/api/properties/owner', { headers });
+      const propertiesRes = await axios.get('http://54.185.125.23:30344/api/properties/owner', { headers });
 
       // Fetch all bookings for stats
-      const bookingsRes = await axios.get('http://localhost:5001/api/bookings/owner', { headers });
+      const bookingsRes = await axios.get('http://54.185.125.23:30344/api/bookings/owner', { headers });
 
       // Fetch previous bookings (completed)
-      const previousRes = await axios.get('http://localhost:5001/api/bookings/owner/previous', { headers });
+      const previousRes = await axios.get('http://54.185.125.23:30344/api/bookings/owner/previous', { headers });
 
       // Fetch recent requests (pending)
-      const requestsRes = await axios.get('http://localhost:5001/api/bookings/owner/recent-requests', { headers });
+      const requestsRes = await axios.get('http://54.185.125.23:30344/api/bookings/owner/recent-requests', { headers });
 
       const bookings = bookingsRes.data.bookings || [];
       const activeBookings = bookings.filter(b => b.status === 'ACCEPTED').length;
@@ -97,7 +97,6 @@ const OwnerDashboard = () => {
 
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">🏠</div>
           <div className="stat-content">
             <h3>{stats.totalProperties}</h3>
             <p>Total Properties</p>
@@ -105,7 +104,6 @@ const OwnerDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">✅</div>
           <div className="stat-content">
             <h3>{stats.activeBookings}</h3>
             <p>Active Bookings</p>
@@ -113,7 +111,6 @@ const OwnerDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">⏳</div>
           <div className="stat-content">
             <h3>{stats.pendingBookings}</h3>
             <p>Pending Requests</p>
@@ -128,7 +125,6 @@ const OwnerDashboard = () => {
             className="action-btn"
             onClick={() => navigate('/owner/properties')}
           >
-            <span className="btn-icon">🏘️</span>
             <span className="btn-text">View Properties</span>
           </button>
 
@@ -136,7 +132,6 @@ const OwnerDashboard = () => {
             className="action-btn"
             onClick={() => navigate('/owner/bookings')}
           >
-            <span className="btn-icon">📅</span>
             <span className="btn-text">Manage Bookings</span>
           </button>
 
@@ -144,7 +139,6 @@ const OwnerDashboard = () => {
             className="action-btn"
             onClick={() => navigate('/owner/add-property')}
           >
-            <span className="btn-icon">➕</span>
             <span className="btn-text">Add New Property</span>
           </button>
         </div>
@@ -228,3 +222,10 @@ const OwnerDashboard = () => {
 };
 
 export default OwnerDashboard;
+
+
+
+
+
+
+

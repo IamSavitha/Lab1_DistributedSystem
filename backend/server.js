@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cors = require('cors');
@@ -27,11 +27,11 @@ const db = mysql.createPool({
 // Test database connection
 db.getConnection()
   .then(connection => {
-    console.log('✅ Database connected successfully');
+    console.log('âœ… Database connected successfully');
     connection.release();
   })
   .catch(err => {
-    console.error('❌ Database connection failed:', err.message);
+    console.error('âŒ Database connection failed:', err.message);
     console.error('Please check your .env file and MySQL server');
   });
 
@@ -69,7 +69,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS Configuration - MUST BE BEFORE ROUTES
 app.use(cors({
-  origin: 'http://localhost:3000', // Frontend URL
+  origin: ['http://localhost:3000', 'http://54.185.125.23:31296'], // Frontend URL
   credentials: true, // Allow cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Cookie', 'Authorization']
@@ -81,13 +81,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URL || 'mongodb://admin:mongopassword@localhost:27017/airbnb_sessions?authSource=admin',
+    mongoUrl: process.env.MONGO_URL || 'mongodb://admin:mongopassword@mongodb-service:27017/airbnb_sessions?authSource=admin',
     ttl: 24 * 60 * 60, // 1 day in seconds
-    touchAfter: 24 * 3600, // Lazy session update
-    crypto: {
-      secret: process.env.SESSION_SECRET || 'your-secret-key'
-    }
-  }),
+    touchAfter: 24 * 3600
+    }),
   cookie: {
     secure: false, // Set to true in production with HTTPS
     httpOnly: true, // Prevents client-side JavaScript from accessing cookie
@@ -168,27 +165,35 @@ const startServer = async () => {
       console.log(`Server running on http://localhost:${PORT}`);
       console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(` Health check: http://localhost:${PORT}/health`);
-      console.log('✅ Kafka integration initialized successfully');
+      console.log('âœ… Kafka integration initialized successfully');
     });
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('âŒ Failed to start server:', error);
     process.exit(1);
   }
 };
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  console.log('\nðŸ›‘ Shutting down gracefully...');
   await disconnectKafka();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  console.log('\nðŸ›‘ Shutting down gracefully...');
   await disconnectKafka();
   process.exit(0);
 });
 
 // Start the server
 startServer();
+
+
+
+
+
+
+
+

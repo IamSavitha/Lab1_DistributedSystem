@@ -1,4 +1,4 @@
-const db = require('../config/database');
+﻿const db = require('../config/database');
 
 // Helper function to auto-update completed bookings
 const autoUpdateCompletedBookings = async () => {
@@ -47,7 +47,7 @@ const createBooking = async (req, res) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    const totalPrice = nights * property.price_per_night;
+    const totalPrice = nights * property.price;
 
     // Check for overlapping ACCEPTED or COMPLETED bookings (blocked dates)
     const [overlappingAccepted] = await db.query(`
@@ -110,7 +110,7 @@ const getTravelerBookings = async (req, res) => {
         b.*,
         p.name as property_name,
         p.location as property_location,
-        p.price_per_night,
+        p.price AS price_per_night,
         o.name as owner_name,
         o.email as owner_email
       FROM bookings b
@@ -148,7 +148,7 @@ const getTravelerHistory = async (req, res) => {
         b.*,
         p.name as property_name,
         p.location as property_location,
-        p.price_per_night,
+        p.price AS price_per_night,
         o.name as owner_name,
         o.email as owner_email
       FROM bookings b
@@ -791,7 +791,36 @@ const cancelBookingOwner = async (req, res) => {
   }
 };
 
+
+/**
+ * OWNER: Get all bookings for owner (all statuses - for dashboard stats)
+ */
+const getOwnerAllBookings = async (req, res) => {
+  try {
+    const ownerId = req.user?.id || req.session.ownerId;
+    await autoUpdateCompletedBookings();
+    const [bookings] = await db.query(`
+      SELECT 
+        b.*,
+        p.name as property_name,
+        p.location as property_location,
+        t.name as traveler_name,
+        t.email as traveler_email
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      JOIN travelers t ON b.traveler_id = t.id
+      WHERE p.owner_id = ?
+      ORDER BY b.created_at DESC
+    `, [ownerId]);
+    res.json({ success: true, bookings });
+  } catch (error) {
+    console.error('Get owner all bookings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
+  getOwnerAllBookings,
   createBooking,
   getTravelerBookings,
   getTravelerHistory,
@@ -806,3 +835,9 @@ module.exports = {
   acceptBooking,
   cancelBookingOwner
 };
+
+
+
+
+
+

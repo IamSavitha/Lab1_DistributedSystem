@@ -1,13 +1,20 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
-const { requireTravelerAuth, requireOwnerAuth } = require('../middleware/auth');
+const { authenticateJWT, isTraveler, isOwner } = require('../middleware/authMiddleware');
+
+// Combined middleware
+const requireTravelerAuth = [authenticateJWT, isTraveler];
+const requireOwnerAuth = [authenticateJWT, isOwner];
 
 // Traveler routes
 router.post('/request', requireTravelerAuth, bookingController.createBooking);
 router.get('/traveler', requireTravelerAuth, bookingController.getTravelerBookings);
 router.get('/traveler/history', requireTravelerAuth, bookingController.getTravelerHistory);
 router.put('/:id/cancel', requireTravelerAuth, bookingController.cancelBookingTraveler);
+
+// Owner routes - Main bookings list (all statuses for dashboard stats)
+router.get('/owner', requireOwnerAuth, bookingController.getOwnerAllBookings);
 
 // Owner routes - Requests (PENDING only)
 router.get('/owner/requests', requireOwnerAuth, bookingController.getOwnerRequests);
@@ -17,7 +24,7 @@ router.get('/owner/accepted', requireOwnerAuth, bookingController.getOwnerAccept
 router.get('/owner/completed', requireOwnerAuth, bookingController.getOwnerCompletedBookings);
 router.get('/owner/cancelled', requireOwnerAuth, bookingController.getOwnerCancelledBookings);
 
-// Owner routes - Dashboard data (limited to 10 items)
+// Owner routes - Dashboard data
 router.get('/owner/previous', requireOwnerAuth, bookingController.getOwnerPreviousBookings);
 router.get('/owner/recent-requests', requireOwnerAuth, bookingController.getOwnerRecentRequests);
 router.get('/owner/stats', requireOwnerAuth, bookingController.getOwnerStats);
@@ -27,3 +34,4 @@ router.put('/owner/:id/accept', requireOwnerAuth, bookingController.acceptBookin
 router.put('/owner/:id/cancel', requireOwnerAuth, bookingController.cancelBookingOwner);
 
 module.exports = router;
+
