@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchPropertyById, clearPropertyDetail } from '../../features/property/propertySlice';
@@ -87,7 +87,7 @@ function PropertyDetails() {
         propertyId: parseInt(id),
         startDate: startDate,
         endDate: endDate,
-        guests: parseInt(guests),
+        numGuests: parseInt(guests),
       })).unwrap();
       
       alert('Booking request submitted successfully!');
@@ -335,3 +335,4 @@ function PropertyDetails() {
 }
 
 export default PropertyDetails;
+

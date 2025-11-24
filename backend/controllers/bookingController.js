@@ -1,12 +1,13 @@
-﻿const db = require('../config/database');
+const db = require('../config/database');
+const { sendBookingRequest, sendBookingStatusUpdate } = require('../config/kafka');
 
 // Helper function to auto-update completed bookings
 const autoUpdateCompletedBookings = async () => {
   try {
     await db.query(`
-      UPDATE bookings 
+      UPDATE bookings
       SET status = 'COMPLETED'
-      WHERE status = 'ACCEPTED' 
+      WHERE status = 'ACCEPTED'
       AND end_date < CURDATE()
     `);
   } catch (error) {
@@ -51,8 +52,8 @@ const createBooking = async (req, res) => {
 
     // Check for overlapping ACCEPTED or COMPLETED bookings (blocked dates)
     const [overlappingAccepted] = await db.query(`
-      SELECT * FROM bookings 
-      WHERE property_id = ? 
+      SELECT * FROM bookings
+      WHERE property_id = ?
       AND status IN ('ACCEPTED', 'COMPLETED')
       AND (
         (start_date <= ? AND end_date >= ?) OR
@@ -74,18 +75,31 @@ const createBooking = async (req, res) => {
       [propertyId, travelerId, startDate, endDate, numGuests, totalPrice, specialRequests || null, 'PENDING']
     );
 
+    const bookingData = {
+      id: result.insertId,
+      propertyId,
+      travelerId,
+      propertyName: property.name,
+      startDate,
+      endDate,
+      numGuests,
+      totalPrice,
+      status: 'PENDING',
+      createdAt: new Date().toISOString()
+    };
+
+    // Publish to Kafka
+    try {
+      await sendBookingRequest(bookingData);
+      console.log('Booking request sent to Kafka:', bookingData.id);
+    } catch (kafkaError) {
+      console.error('Kafka publish failed (non-blocking):', kafkaError.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Booking request submitted successfully',
-      booking: {
-        id: result.insertId,
-        propertyId,
-        startDate,
-        endDate,
-        numGuests,
-        totalPrice,
-        status: 'PENDING'
-      }
+      booking: bookingData
     });
 
   } catch (error) {
@@ -106,12 +120,13 @@ const getTravelerBookings = async (req, res) => {
     await autoUpdateCompletedBookings();
 
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
         p.price AS price_per_night,
-        o.name as owner_name,
+          p.image_url as property_image,
+          o.name as owner_name,
         o.email as owner_email
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
@@ -144,12 +159,13 @@ const getTravelerHistory = async (req, res) => {
     await autoUpdateCompletedBookings();
 
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
         p.price AS price_per_night,
-        o.name as owner_name,
+          p.image_url as property_image,
+          o.name as owner_name,
         o.email as owner_email
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
@@ -210,6 +226,20 @@ const cancelBookingTraveler = async (req, res) => {
       [id]
     );
 
+    // Publish status update to Kafka
+    try {
+      await sendBookingStatusUpdate({
+        id: parseInt(id),
+        status: 'CANCELLED',
+        cancelledBy: 'TRAVELER',
+        travelerId,
+        updatedAt: new Date().toISOString()
+      });
+      console.log('Booking cancellation sent to Kafka:', id);
+    } catch (kafkaError) {
+      console.error('Kafka publish failed (non-blocking):', kafkaError.message);
+    }
+
     res.json({
       success: true,
       message: 'Booking cancelled successfully',
@@ -246,7 +276,7 @@ const getOwnerRequests = async (req, res) => {
 
     // Get paginated bookings
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -306,7 +336,7 @@ const getOwnerAcceptedBookings = async (req, res) => {
 
     // Get paginated bookings
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -366,7 +396,7 @@ const getOwnerCompletedBookings = async (req, res) => {
 
     // Get paginated bookings
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -422,7 +452,7 @@ const getOwnerCancelledBookings = async (req, res) => {
 
     // Get paginated bookings
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -466,7 +496,7 @@ const getOwnerPreviousBookings = async (req, res) => {
     await autoUpdateCompletedBookings();
 
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -501,7 +531,7 @@ const getOwnerRecentRequests = async (req, res) => {
     const ownerId = req.user?.id || req.session.ownerId;
 
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -539,7 +569,7 @@ const getOwnerStats = async (req, res) => {
     await autoUpdateCompletedBookings();
 
     const [stats] = await db.query(`
-      SELECT 
+      SELECT
         COUNT(CASE WHEN b.status = 'PENDING' THEN 1 END) as pending_count,
         COUNT(CASE WHEN b.status = 'ACCEPTED' THEN 1 END) as accepted_count,
         COUNT(CASE WHEN b.status = 'COMPLETED' THEN 1 END) as completed_count,
@@ -604,7 +634,7 @@ const acceptBooking = async (req, res) => {
 
     // Find all overlapping PENDING bookings
     const [overlappingPendingBookings] = await db.query(`
-      SELECT 
+      SELECT
         b.id,
         b.start_date,
         b.end_date,
@@ -612,7 +642,7 @@ const acceptBooking = async (req, res) => {
         t.email as traveler_email
       FROM bookings b
       JOIN travelers t ON b.traveler_id = t.id
-      WHERE b.property_id = ? 
+      WHERE b.property_id = ?
       AND b.id != ?
       AND b.status = 'PENDING'
       AND (
@@ -630,14 +660,14 @@ const acceptBooking = async (req, res) => {
 
     // Check for overlapping ACCEPTED/COMPLETED bookings (safety check)
     const [overlappingAcceptedBookings] = await db.query(`
-      SELECT 
+      SELECT
         b.id,
         b.start_date,
         b.end_date,
         t.name as traveler_name
       FROM bookings b
       JOIN travelers t ON b.traveler_id = t.id
-      WHERE b.property_id = ? 
+      WHERE b.property_id = ?
       AND b.id != ?
       AND b.status IN ('ACCEPTED', 'COMPLETED')
       AND (
@@ -675,10 +705,10 @@ const acceptBooking = async (req, res) => {
       // Automatically cancel all overlapping PENDING bookings
       if (overlappingPendingBookings.length > 0) {
         const overlappingIds = overlappingPendingBookings.map(b => b.id);
-        
+
         await db.query(
-          `UPDATE bookings 
-           SET status = 'CANCELLED', 
+          `UPDATE bookings
+           SET status = 'CANCELLED',
                cancelled_at = NOW(),
                cancellation_reason = 'Automatically cancelled due to accepted overlapping booking'
            WHERE id IN (${overlappingIds.join(',')})`,
@@ -697,12 +727,27 @@ const acceptBooking = async (req, res) => {
         [id]
       );
 
+      // Publish status update to Kafka
+      try {
+        await sendBookingStatusUpdate({
+          id: parseInt(id),
+          status: 'ACCEPTED',
+          ownerId,
+          propertyName: booking.property_name,
+          travelerId: booking.traveler_id,
+          acceptedAt: new Date().toISOString()
+        });
+        console.log('Booking acceptance sent to Kafka:', id);
+      } catch (kafkaError) {
+        console.error('Kafka publish failed (non-blocking):', kafkaError.message);
+      }
+
       res.json({
         success: true,
         message: 'Booking accepted successfully',
         booking: updatedBookings[0],
         cancelledBookings: overlappingPendingBookings.length,
-        details: overlappingPendingBookings.length > 0 
+        details: overlappingPendingBookings.length > 0
           ? `${overlappingPendingBookings.length} overlapping booking(s) were automatically cancelled`
           : null
       });
@@ -729,7 +774,7 @@ const cancelBookingOwner = async (req, res) => {
     const { id } = req.params;
 
     const [bookings] = await db.query(`
-      SELECT b.*, p.owner_id 
+      SELECT b.*, p.owner_id, p.name as property_name
       FROM bookings b
       JOIN properties p ON b.property_id = p.id
       WHERE b.id = ?
@@ -776,6 +821,22 @@ const cancelBookingOwner = async (req, res) => {
       [id]
     );
 
+    // Publish status update to Kafka
+    try {
+      await sendBookingStatusUpdate({
+        id: parseInt(id),
+        status: 'CANCELLED',
+        cancelledBy: 'OWNER',
+        ownerId,
+        propertyName: booking.property_name,
+        travelerId: booking.traveler_id,
+        cancelledAt: new Date().toISOString()
+      });
+      console.log('Booking cancellation sent to Kafka:', id);
+    } catch (kafkaError) {
+      console.error('Kafka publish failed (non-blocking):', kafkaError.message);
+    }
+
     res.json({
       success: true,
       message: 'Booking cancelled successfully. The dates are now available for new bookings.',
@@ -800,7 +861,7 @@ const getOwnerAllBookings = async (req, res) => {
     const ownerId = req.user?.id || req.session.ownerId;
     await autoUpdateCompletedBookings();
     const [bookings] = await db.query(`
-      SELECT 
+      SELECT
         b.*,
         p.name as property_name,
         p.location as property_location,
@@ -835,9 +896,3 @@ module.exports = {
   acceptBooking,
   cancelBookingOwner
 };
-
-
-
-
-
-
