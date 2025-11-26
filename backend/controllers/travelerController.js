@@ -1,12 +1,12 @@
 const bcrypt = require('bcryptjs');
 const { isValidEmail, isValidStateCode } = require('../utils/validation');
 const { generateToken } = require('../utils/jwt');
+const Traveler = require('../models/Traveler');
 
 // Traveler Signup
 const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const db = req.app.get('db');
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -29,12 +29,9 @@ const signup = async (req, res) => {
       });
     }
 
-    const [existingUsers] = await db.query(
-      'SELECT id FROM travelers WHERE email = ?',
-      [email]
-    );
+    const existingUser = await Traveler.findOne({ email });
 
-    if (existingUsers.length > 0) {
+    if (existingUser) {
       return res.status(400).json({
         success: false,
         message: 'Email already exists'
@@ -43,24 +40,25 @@ const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [result] = await db.query(
-      'INSERT INTO travelers (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
-    );
+    const traveler = await Traveler.create({
+      name,
+      email,
+      password: hashedPassword
+    });
 
     // Set session
-    req.session.travelerId = result.insertId;
+    req.session.travelerId = traveler._id;
     req.session.userType = 'traveler';
-
-    const [travelers] = await db.query(
-      'SELECT id, name, email, created_at FROM travelers WHERE id = ?',
-      [result.insertId]
-    );
 
     res.status(201).json({
       success: true,
       message: 'Traveler account created successfully',
-      traveler: travelers[0]
+      traveler: {
+        id: traveler._id,
+        name: traveler.name,
+        email: traveler.email,
+        created_at: traveler.created_at
+      }
     });
 
   } catch (error) {
@@ -76,7 +74,6 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const db = req.app.get('db');
 
     if (!email || !password) {
       return res.status(400).json({
@@ -85,19 +82,14 @@ const login = async (req, res) => {
       });
     }
 
-    const [travelers] = await db.query(
-      'SELECT * FROM travelers WHERE email = ?',
-      [email]
-    );
+    const traveler = await Traveler.findOne({ email });
 
-    if (travelers.length === 0) {
+    if (!traveler) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
-
-    const traveler = travelers[0];
 
     const isValidPassword = await bcrypt.compare(password, traveler.password);
 
@@ -109,22 +101,24 @@ const login = async (req, res) => {
     }
 
     // Set session
-    req.session.travelerId = traveler.id;
+    req.session.travelerId = traveler._id;
     req.session.userType = 'traveler';
 
     // Generate JWT token
     const token = generateToken({
-      id: traveler.id,
+      id: traveler._id,
       email: traveler.email,
       userType: 'traveler'
     });
 
-    delete traveler.password;
+    // Return traveler without password
+    const travelerResponse = traveler.toObject();
+    delete travelerResponse.password;
 
     res.json({
       success: true,
       message: 'Login successful',
-      traveler,
+      traveler: travelerResponse,
       token
     });
 
@@ -158,8 +152,6 @@ const logout = (req, res) => {
 // Get Traveler Profile
 const getProfile = async (req, res) => {
   try {
-    const db = req.app.get('db');
-    // 从 JWT token 获取 travelerId (优先)
     const travelerId = req.user?.id || req.session?.travelerId;
 
     if (!travelerId) {
@@ -169,12 +161,10 @@ const getProfile = async (req, res) => {
       });
     }
 
-    const [travelers] = await db.query(
-      'SELECT id, name, email, location, phone, city, state, country, about, languages, gender, profile_picture, created_at FROM travelers WHERE id = ?',
-      [travelerId]
-    );
+    const traveler = await Traveler.findById(travelerId)
+      .select('-password');
 
-    if (travelers.length === 0) {
+    if (!traveler) {
       return res.status(404).json({
         success: false,
         message: 'Traveler not found'
@@ -183,7 +173,7 @@ const getProfile = async (req, res) => {
 
     res.json({
       success: true,
-      traveler: travelers[0]
+      traveler
     });
 
   } catch (error) {
@@ -198,8 +188,6 @@ const getProfile = async (req, res) => {
 // Update Traveler Profile
 const updateProfile = async (req, res) => {
   try {
-    const db = req.app.get('db');
-    // 从 JWT token 获取 travelerId (优先)
     const travelerId = req.user?.id || req.session?.travelerId;
 
     if (!travelerId) {
@@ -228,69 +216,35 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const updates = [];
-    const values = [];
+    const updateData = {};
 
-    if (name !== undefined) {
-      updates.push('name = ?');
-      values.push(name);
-    }
-    if (phone !== undefined) {
-      updates.push('phone = ?');
-      values.push(phone);
-    }
-    if (profilePicture !== undefined) {
-      updates.push('profile_picture = ?');
-      values.push(profilePicture);
-    }
-    if (city !== undefined) {
-      updates.push('city = ?');
-      values.push(city);
-    }
-    if (state !== undefined) {
-      updates.push('state = ?');
-      values.push(state);
-    }
-    if (country !== undefined) {
-      updates.push('country = ?');
-      values.push(country);
-    }
-    if (about !== undefined) {
-      updates.push('about = ?');
-      values.push(about);
-    }
-    if (languages !== undefined) {
-      updates.push('languages = ?');
-      values.push(languages);
-    }
-    if (gender !== undefined) {
-      updates.push('gender = ?');
-      values.push(gender);
-    }
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (profilePicture !== undefined) updateData.profile_picture = profilePicture;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (country !== undefined) updateData.country = country;
+    if (about !== undefined) updateData.about = about;
+    if (languages !== undefined) updateData.languages = languages;
+    if (gender !== undefined) updateData.gender = gender;
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
         message: 'No fields to update'
       });
     }
 
-    values.push(travelerId);
-
-    await db.query(
-      `UPDATE travelers SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
-
-    const [travelers] = await db.query(
-      'SELECT id, name, email, location, phone, city, state, country, about, languages, gender, profile_picture, created_at, updated_at FROM travelers WHERE id = ?',
-      [travelerId]
-    );
+    const traveler = await Traveler.findByIdAndUpdate(
+      travelerId,
+      updateData,
+      { new: true }
+    ).select('-password');
 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      traveler: travelers[0]
+      traveler
     });
 
   } catch (error) {
@@ -305,54 +259,52 @@ const updateProfile = async (req, res) => {
 // Upload profile picture
 const uploadProfileImage = async (req, res) => {
   try {
-    const db = req.app.get('db');
     const travelerId = req.user?.id || req.session?.travelerId;
-    
+
     if (!travelerId) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Unauthorized' 
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
       });
     }
 
     const { imageData } = req.body;
 
     if (!imageData) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No image data provided' 
+      return res.status(400).json({
+        success: false,
+        message: 'No image data provided'
       });
     }
 
     if (!imageData.match(/^data:image\/(jpeg|jpg|png|gif|webp);base64,/)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid image format. Please upload JPEG, PNG, GIF, or WebP' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid image format. Please upload JPEG, PNG, GIF, or WebP'
       });
     }
 
     if (imageData.length > 2 * 1024 * 1024) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Image too large. Maximum size is 1.5MB' 
+      return res.status(400).json({
+        success: false,
+        message: 'Image too large. Maximum size is 1.5MB'
       });
     }
 
-    await db.query(
-      'UPDATE travelers SET profile_picture = ? WHERE id = ?', 
-      [imageData, travelerId]
-    );
-    
-    res.json({ 
-      success: true, 
+    await Traveler.findByIdAndUpdate(travelerId, {
+      profile_picture: imageData
+    });
+
+    res.json({
+      success: true,
       message: 'Profile picture updated',
       imageUrl: imageData
     });
   } catch (error) {
     console.error('Upload profile image error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Upload failed' 
+    res.status(500).json({
+      success: false,
+      message: 'Upload failed'
     });
   }
 };
@@ -360,7 +312,6 @@ const uploadProfileImage = async (req, res) => {
 // Delete profile picture
 const deleteProfileImage = async (req, res) => {
   try {
-    const db = req.app.get('db');
     const travelerId = req.user?.id || req.session.travelerId;
 
     if (!travelerId) {
@@ -370,10 +321,9 @@ const deleteProfileImage = async (req, res) => {
       });
     }
 
-    await db.query(
-      'UPDATE travelers SET profile_picture = NULL WHERE id = ?',
-      [travelerId]
-    );
+    await Traveler.findByIdAndUpdate(travelerId, {
+      profile_picture: null
+    });
 
     res.json({
       success: true,

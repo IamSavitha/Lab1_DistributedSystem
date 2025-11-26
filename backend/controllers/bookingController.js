@@ -1,15 +1,19 @@
-const db = require('../config/database');
+const Booking = require('../models/Booking');
+const Property = require('../models/Property');
+const Traveler = require('../models/Traveler');
+const mongoose = require('mongoose');
 const { sendBookingRequest, sendBookingStatusUpdate } = require('../config/kafka');
 
 // Helper function to auto-update completed bookings
 const autoUpdateCompletedBookings = async () => {
   try {
-    await db.query(`
-      UPDATE bookings
-      SET status = 'COMPLETED'
-      WHERE status = 'ACCEPTED'
-      AND end_date < CURDATE()
-    `);
+    await Booking.updateMany(
+      {
+        status: 'ACCEPTED',
+        end_date: { $lt: new Date() }
+      },
+      { status: 'COMPLETED' }
+    );
   } catch (error) {
     console.error('Error auto-updating completed bookings:', error);
   }
@@ -30,19 +34,14 @@ const createBooking = async (req, res) => {
     }
 
     // Check if property exists
-    const [properties] = await db.query(
-      'SELECT * FROM properties WHERE id = ?',
-      [propertyId]
-    );
+    const property = await Property.findById(propertyId);
 
-    if (properties.length === 0) {
+    if (!property) {
       return res.status(404).json({
         success: false,
         message: 'Property not found'
       });
     }
-
-    const property = properties[0];
 
     // Calculate total price
     const start = new Date(startDate);
@@ -51,16 +50,15 @@ const createBooking = async (req, res) => {
     const totalPrice = nights * property.price;
 
     // Check for overlapping ACCEPTED or COMPLETED bookings (blocked dates)
-    const [overlappingAccepted] = await db.query(`
-      SELECT * FROM bookings
-      WHERE property_id = ?
-      AND status IN ('ACCEPTED', 'COMPLETED')
-      AND (
-        (start_date <= ? AND end_date >= ?) OR
-        (start_date <= ? AND end_date >= ?) OR
-        (start_date >= ? AND end_date <= ?)
-      )
-    `, [propertyId, startDate, startDate, endDate, endDate, startDate, endDate]);
+    const overlappingAccepted = await Booking.find({
+      property_id: propertyId,
+      status: { $in: ['ACCEPTED', 'COMPLETED'] },
+      $or: [
+        { start_date: { $lte: new Date(startDate) }, end_date: { $gte: new Date(startDate) } },
+        { start_date: { $lte: new Date(endDate) }, end_date: { $gte: new Date(endDate) } },
+        { start_date: { $gte: new Date(startDate) }, end_date: { $lte: new Date(endDate) } }
+      ]
+    });
 
     if (overlappingAccepted.length > 0) {
       return res.status(409).json({
@@ -70,22 +68,29 @@ const createBooking = async (req, res) => {
     }
 
     // Create booking with PENDING status
-    const [result] = await db.query(
-      'INSERT INTO bookings (property_id, traveler_id, start_date, end_date, num_guests, total_price, special_requests, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [propertyId, travelerId, startDate, endDate, numGuests, totalPrice, specialRequests || null, 'PENDING']
-    );
+    const booking = await Booking.create({
+      property_id: propertyId,
+      traveler_id: travelerId,
+      start_date: startDate,
+      end_date: endDate,
+      num_guests: numGuests,
+      total_price: totalPrice,
+      special_requests: specialRequests || null,
+      status: 'PENDING'
+    });
 
     const bookingData = {
-      id: result.insertId,
+      id: booking._id,
       propertyId,
       travelerId,
+      ownerId: property.owner_id.toString(),
       propertyName: property.name,
       startDate,
       endDate,
       numGuests,
       totalPrice,
       status: 'PENDING',
-      createdAt: new Date().toISOString()
+      createdAt: booking.created_at
     };
 
     // Publish to Kafka
@@ -119,26 +124,37 @@ const getTravelerBookings = async (req, res) => {
     // Auto-update completed bookings first
     await autoUpdateCompletedBookings();
 
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        p.price AS price_per_night,
-          p.image_url as property_image,
-          o.name as owner_name,
-        o.email as owner_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN owners o ON p.owner_id = o.id
-      WHERE b.traveler_id = ?
-      AND b.status IN ('PENDING', 'ACCEPTED')
-      ORDER BY b.start_date ASC
-    `, [travelerId]);
+    const bookings = await Booking.find({
+      traveler_id: travelerId,
+      status: { $in: ['PENDING', 'ACCEPTED'] }
+    })
+      .populate({
+        path: 'property_id',
+        select: 'name location price image_url owner_id',
+        populate: {
+          path: 'owner_id',
+          select: 'name email'
+        }
+      })
+      .sort({ start_date: 1 });
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        price_per_night: obj.property_id?.price,
+        property_image: obj.property_id?.image_url,
+        owner_name: obj.property_id?.owner_id?.name,
+        owner_email: obj.property_id?.owner_id?.email
+      };
+    });
 
     res.json({
       success: true,
-      bookings
+      bookings: formattedBookings
     });
 
   } catch (error) {
@@ -158,26 +174,37 @@ const getTravelerHistory = async (req, res) => {
     // Auto-update completed bookings first
     await autoUpdateCompletedBookings();
 
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        p.price AS price_per_night,
-          p.image_url as property_image,
-          o.name as owner_name,
-        o.email as owner_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN owners o ON p.owner_id = o.id
-      WHERE b.traveler_id = ?
-      AND b.status IN ('CANCELLED', 'COMPLETED')
-      ORDER BY b.start_date DESC
-    `, [travelerId]);
+    const bookings = await Booking.find({
+      traveler_id: travelerId,
+      status: { $in: ['CANCELLED', 'COMPLETED'] }
+    })
+      .populate({
+        path: 'property_id',
+        select: 'name location price image_url owner_id',
+        populate: {
+          path: 'owner_id',
+          select: 'name email'
+        }
+      })
+      .sort({ start_date: -1 });
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        price_per_night: obj.property_id?.price,
+        property_image: obj.property_id?.image_url,
+        owner_name: obj.property_id?.owner_id?.name,
+        owner_email: obj.property_id?.owner_id?.email
+      };
+    });
 
     res.json({
       success: true,
-      bookings
+      bookings: formattedBookings
     });
 
   } catch (error) {
@@ -195,19 +222,17 @@ const cancelBookingTraveler = async (req, res) => {
     const travelerId = req.user?.id || req.session.travelerId;
     const { id } = req.params;
 
-    const [bookings] = await db.query(
-      'SELECT * FROM bookings WHERE id = ? AND traveler_id = ?',
-      [id, travelerId]
-    );
+    const booking = await Booking.findOne({
+      _id: id,
+      traveler_id: travelerId
+    });
 
-    if (bookings.length === 0) {
+    if (!booking) {
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
       });
     }
-
-    const booking = bookings[0];
 
     if (booking.status === 'CANCELLED') {
       return res.status(400).json({
@@ -216,20 +241,16 @@ const cancelBookingTraveler = async (req, res) => {
       });
     }
 
-    await db.query(
-      'UPDATE bookings SET status = ?, cancelled_at = NOW() WHERE id = ?',
-      ['CANCELLED', id]
-    );
-
-    const [updatedBookings] = await db.query(
-      'SELECT * FROM bookings WHERE id = ?',
-      [id]
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { status: 'CANCELLED', cancelled_at: new Date() },
+      { new: true }
     );
 
     // Publish status update to Kafka
     try {
       await sendBookingStatusUpdate({
-        id: parseInt(id),
+        id: id,
         status: 'CANCELLED',
         cancelledBy: 'TRAVELER',
         travelerId,
@@ -243,7 +264,7 @@ const cancelBookingTraveler = async (req, res) => {
     res.json({
       success: true,
       message: 'Booking cancelled successfully',
-      booking: updatedBookings[0]
+      booking: updatedBooking
     });
 
   } catch (error) {
@@ -255,46 +276,55 @@ const cancelBookingTraveler = async (req, res) => {
   }
 };
 
+// Helper: Get owner's property IDs
+const getOwnerPropertyIds = async (ownerId) => {
+  const properties = await Property.find({ owner_id: ownerId }).select('_id');
+  return properties.map(p => p._id);
+};
+
 // Get Owner's Booking Requests (PENDING only) - WITH PAGINATION
 const getOwnerRequests = async (req, res) => {
   try {
     const ownerId = req.user?.id || req.session.ownerId;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
+
+    const propertyIds = await getOwnerPropertyIds(ownerId);
 
     // Get total count
-    const [countResult] = await db.query(`
-      SELECT COUNT(*) as total
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE p.owner_id = ?
-      AND b.status = 'PENDING'
-    `, [ownerId]);
-
-    const total = countResult[0].total;
+    const total = await Booking.countDocuments({
+      property_id: { $in: propertyIds },
+      status: 'PENDING'
+    });
 
     // Get paginated bookings
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email,
-        t.phone as traveler_phone
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      AND b.status = 'PENDING'
-      ORDER BY b.created_at DESC
-      LIMIT ? OFFSET ?
-    `, [ownerId, limit, offset]);
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds },
+      status: 'PENDING'
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email phone')
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email,
+        traveler_phone: obj.traveler_id?.phone
+      };
+    });
 
     res.json({
       success: true,
-      bookings,
+      bookings: formattedBookings,
       pagination: {
         page,
         limit,
@@ -318,43 +348,46 @@ const getOwnerAcceptedBookings = async (req, res) => {
     const ownerId = req.user?.id || req.session.ownerId;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     // Auto-update completed bookings first
     await autoUpdateCompletedBookings();
 
-    // Get total count
-    const [countResult] = await db.query(`
-      SELECT COUNT(*) as total
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE p.owner_id = ?
-      AND b.status = 'ACCEPTED'
-    `, [ownerId]);
+    const propertyIds = await getOwnerPropertyIds(ownerId);
 
-    const total = countResult[0].total;
+    // Get total count
+    const total = await Booking.countDocuments({
+      property_id: { $in: propertyIds },
+      status: 'ACCEPTED'
+    });
 
     // Get paginated bookings
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email,
-        t.phone as traveler_phone
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      AND b.status = 'ACCEPTED'
-      ORDER BY b.start_date ASC
-      LIMIT ? OFFSET ?
-    `, [ownerId, limit, offset]);
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds },
+      status: 'ACCEPTED'
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email phone')
+      .sort({ start_date: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email,
+        traveler_phone: obj.traveler_id?.phone
+      };
+    });
 
     res.json({
       success: true,
-      bookings,
+      bookings: formattedBookings,
       pagination: {
         page,
         limit,
@@ -378,42 +411,45 @@ const getOwnerCompletedBookings = async (req, res) => {
     const ownerId = req.user?.id || req.session.ownerId;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     // Auto-update completed bookings first
     await autoUpdateCompletedBookings();
 
-    // Get total count
-    const [countResult] = await db.query(`
-      SELECT COUNT(*) as total
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE p.owner_id = ?
-      AND b.status = 'COMPLETED'
-    `, [ownerId]);
+    const propertyIds = await getOwnerPropertyIds(ownerId);
 
-    const total = countResult[0].total;
+    // Get total count
+    const total = await Booking.countDocuments({
+      property_id: { $in: propertyIds },
+      status: 'COMPLETED'
+    });
 
     // Get paginated bookings
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      AND b.status = 'COMPLETED'
-      ORDER BY b.end_date DESC
-      LIMIT ? OFFSET ?
-    `, [ownerId, limit, offset]);
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds },
+      status: 'COMPLETED'
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email')
+      .sort({ end_date: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email
+      };
+    });
 
     res.json({
       success: true,
-      bookings,
+      bookings: formattedBookings,
       pagination: {
         page,
         limit,
@@ -437,39 +473,42 @@ const getOwnerCancelledBookings = async (req, res) => {
     const ownerId = req.user?.id || req.session.ownerId;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
+
+    const propertyIds = await getOwnerPropertyIds(ownerId);
 
     // Get total count
-    const [countResult] = await db.query(`
-      SELECT COUNT(*) as total
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE p.owner_id = ?
-      AND b.status = 'CANCELLED'
-    `, [ownerId]);
-
-    const total = countResult[0].total;
+    const total = await Booking.countDocuments({
+      property_id: { $in: propertyIds },
+      status: 'CANCELLED'
+    });
 
     // Get paginated bookings
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      AND b.status = 'CANCELLED'
-      ORDER BY b.cancelled_at DESC
-      LIMIT ? OFFSET ?
-    `, [ownerId, limit, offset]);
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds },
+      status: 'CANCELLED'
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email')
+      .sort({ cancelled_at: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email
+      };
+    });
 
     res.json({
       success: true,
-      bookings,
+      bookings: formattedBookings,
       pagination: {
         page,
         limit,
@@ -495,25 +534,32 @@ const getOwnerPreviousBookings = async (req, res) => {
     // Auto-update completed bookings first
     await autoUpdateCompletedBookings();
 
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      AND b.status = 'COMPLETED'
-      ORDER BY b.end_date DESC
-      LIMIT 10
-    `, [ownerId]);
+    const propertyIds = await getOwnerPropertyIds(ownerId);
+
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds },
+      status: 'COMPLETED'
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email')
+      .sort({ end_date: -1 })
+      .limit(10);
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email
+      };
+    });
 
     res.json({
       success: true,
-      bookings
+      bookings: formattedBookings
     });
 
   } catch (error) {
@@ -530,25 +576,32 @@ const getOwnerRecentRequests = async (req, res) => {
   try {
     const ownerId = req.user?.id || req.session.ownerId;
 
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      AND b.status = 'PENDING'
-      ORDER BY b.created_at DESC
-      LIMIT 10
-    `, [ownerId]);
+    const propertyIds = await getOwnerPropertyIds(ownerId);
+
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds },
+      status: 'PENDING'
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email')
+      .sort({ created_at: -1 })
+      .limit(10);
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email
+      };
+    });
 
     res.json({
       success: true,
-      bookings
+      bookings: formattedBookings
     });
 
   } catch (error) {
@@ -568,20 +621,29 @@ const getOwnerStats = async (req, res) => {
     // Auto-update completed bookings first
     await autoUpdateCompletedBookings();
 
-    const [stats] = await db.query(`
-      SELECT
-        COUNT(CASE WHEN b.status = 'PENDING' THEN 1 END) as pending_count,
-        COUNT(CASE WHEN b.status = 'ACCEPTED' THEN 1 END) as accepted_count,
-        COUNT(CASE WHEN b.status = 'COMPLETED' THEN 1 END) as completed_count,
-        COUNT(CASE WHEN b.status = 'CANCELLED' THEN 1 END) as cancelled_count
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE p.owner_id = ?
-    `, [ownerId]);
+    const propertyIds = await getOwnerPropertyIds(ownerId);
+
+    const stats = await Booking.aggregate([
+      { $match: { property_id: { $in: propertyIds } } },
+      {
+        $group: {
+          _id: null,
+          pending_count: { $sum: { $cond: [{ $eq: ['$status', 'PENDING'] }, 1, 0] } },
+          accepted_count: { $sum: { $cond: [{ $eq: ['$status', 'ACCEPTED'] }, 1, 0] } },
+          completed_count: { $sum: { $cond: [{ $eq: ['$status', 'COMPLETED'] }, 1, 0] } },
+          cancelled_count: { $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] } }
+        }
+      }
+    ]);
 
     res.json({
       success: true,
-      stats: stats[0]
+      stats: stats[0] || {
+        pending_count: 0,
+        accepted_count: 0,
+        completed_count: 0,
+        cancelled_count: 0
+      }
     });
 
   } catch (error) {
@@ -600,24 +662,18 @@ const acceptBooking = async (req, res) => {
     const { id } = req.params;
 
     // Get booking with property info
-    const [bookings] = await db.query(`
-      SELECT b.*, p.owner_id, p.name as property_name
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE b.id = ?
-    `, [id]);
+    const booking = await Booking.findById(id)
+      .populate('property_id', 'owner_id name');
 
-    if (bookings.length === 0) {
+    if (!booking) {
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
       });
     }
 
-    const booking = bookings[0];
-
     // Verify ownership
-    if (booking.owner_id !== ownerId) {
+    if (!booking.property_id.owner_id.equals(ownerId)) {
       return res.status(403).json({
         success: false,
         message: 'You can only accept bookings for your own properties'
@@ -633,55 +689,28 @@ const acceptBooking = async (req, res) => {
     }
 
     // Find all overlapping PENDING bookings
-    const [overlappingPendingBookings] = await db.query(`
-      SELECT
-        b.id,
-        b.start_date,
-        b.end_date,
-        t.name as traveler_name,
-        t.email as traveler_email
-      FROM bookings b
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE b.property_id = ?
-      AND b.id != ?
-      AND b.status = 'PENDING'
-      AND (
-        (b.start_date <= ? AND b.end_date >= ?) OR
-        (b.start_date <= ? AND b.end_date >= ?) OR
-        (b.start_date >= ? AND b.end_date <= ?)
-      )
-    `, [
-      booking.property_id,
-      id,
-      booking.start_date, booking.start_date,
-      booking.end_date, booking.end_date,
-      booking.start_date, booking.end_date
-    ]);
+    const overlappingPendingBookings = await Booking.find({
+      property_id: booking.property_id._id,
+      _id: { $ne: id },
+      status: 'PENDING',
+      $or: [
+        { start_date: { $lte: booking.start_date }, end_date: { $gte: booking.start_date } },
+        { start_date: { $lte: booking.end_date }, end_date: { $gte: booking.end_date } },
+        { start_date: { $gte: booking.start_date }, end_date: { $lte: booking.end_date } }
+      ]
+    }).populate('traveler_id', 'name email');
 
     // Check for overlapping ACCEPTED/COMPLETED bookings (safety check)
-    const [overlappingAcceptedBookings] = await db.query(`
-      SELECT
-        b.id,
-        b.start_date,
-        b.end_date,
-        t.name as traveler_name
-      FROM bookings b
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE b.property_id = ?
-      AND b.id != ?
-      AND b.status IN ('ACCEPTED', 'COMPLETED')
-      AND (
-        (b.start_date <= ? AND b.end_date >= ?) OR
-        (b.start_date <= ? AND b.end_date >= ?) OR
-        (b.start_date >= ? AND b.end_date <= ?)
-      )
-    `, [
-      booking.property_id,
-      id,
-      booking.start_date, booking.start_date,
-      booking.end_date, booking.end_date,
-      booking.start_date, booking.end_date
-    ]);
+    const overlappingAcceptedBookings = await Booking.find({
+      property_id: booking.property_id._id,
+      _id: { $ne: id },
+      status: { $in: ['ACCEPTED', 'COMPLETED'] },
+      $or: [
+        { start_date: { $lte: booking.start_date }, end_date: { $gte: booking.start_date } },
+        { start_date: { $lte: booking.end_date }, end_date: { $gte: booking.end_date } },
+        { start_date: { $gte: booking.start_date }, end_date: { $lte: booking.end_date } }
+      ]
+    }).populate('traveler_id', 'name');
 
     if (overlappingAcceptedBookings.length > 0) {
       const overlap = overlappingAcceptedBookings[0];
@@ -692,71 +721,55 @@ const acceptBooking = async (req, res) => {
       });
     }
 
-    // Begin transaction
-    await db.query('START TRANSACTION');
+    // Accept the booking
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { status: 'ACCEPTED', accepted_at: new Date() },
+      { new: true }
+    );
 
-    try {
-      // Accept the booking
-      await db.query(
-        'UPDATE bookings SET status = ?, accepted_at = NOW() WHERE id = ?',
-        ['ACCEPTED', id]
+    // Automatically cancel all overlapping PENDING bookings
+    let cancelledCount = 0;
+    if (overlappingPendingBookings.length > 0) {
+      const overlappingIds = overlappingPendingBookings.map(b => b._id);
+
+      await Booking.updateMany(
+        { _id: { $in: overlappingIds } },
+        {
+          status: 'CANCELLED',
+          cancelled_at: new Date(),
+          cancellation_reason: 'Automatically cancelled due to accepted overlapping booking'
+        }
       );
 
-      // Automatically cancel all overlapping PENDING bookings
-      if (overlappingPendingBookings.length > 0) {
-        const overlappingIds = overlappingPendingBookings.map(b => b.id);
-
-        await db.query(
-          `UPDATE bookings
-           SET status = 'CANCELLED',
-               cancelled_at = NOW(),
-               cancellation_reason = 'Automatically cancelled due to accepted overlapping booking'
-           WHERE id IN (${overlappingIds.join(',')})`,
-          []
-        );
-
-        console.log(`Automatically cancelled ${overlappingIds.length} overlapping bookings:`, overlappingIds);
-      }
-
-      // Commit transaction
-      await db.query('COMMIT');
-
-      // Get updated booking
-      const [updatedBookings] = await db.query(
-        'SELECT * FROM bookings WHERE id = ?',
-        [id]
-      );
-
-      // Publish status update to Kafka
-      try {
-        await sendBookingStatusUpdate({
-          id: parseInt(id),
-          status: 'ACCEPTED',
-          ownerId,
-          propertyName: booking.property_name,
-          travelerId: booking.traveler_id,
-          acceptedAt: new Date().toISOString()
-        });
-        console.log('Booking acceptance sent to Kafka:', id);
-      } catch (kafkaError) {
-        console.error('Kafka publish failed (non-blocking):', kafkaError.message);
-      }
-
-      res.json({
-        success: true,
-        message: 'Booking accepted successfully',
-        booking: updatedBookings[0],
-        cancelledBookings: overlappingPendingBookings.length,
-        details: overlappingPendingBookings.length > 0
-          ? `${overlappingPendingBookings.length} overlapping booking(s) were automatically cancelled`
-          : null
-      });
-
-    } catch (error) {
-      // Rollback on error
-      await db.query('ROLLBACK');
-      throw error;
+      cancelledCount = overlappingIds.length;
+      console.log(`Automatically cancelled ${cancelledCount} overlapping bookings:`, overlappingIds);
     }
+
+    // Publish status update to Kafka
+    try {
+      await sendBookingStatusUpdate({
+        id: id,
+        status: 'ACCEPTED',
+        ownerId,
+        propertyName: booking.property_id.name,
+        travelerId: booking.traveler_id,
+        acceptedAt: new Date().toISOString()
+      });
+      console.log('Booking acceptance sent to Kafka:', id);
+    } catch (kafkaError) {
+      console.error('Kafka publish failed (non-blocking):', kafkaError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking accepted successfully',
+      booking: updatedBooking,
+      cancelledBookings: cancelledCount,
+      details: cancelledCount > 0
+        ? `${cancelledCount} overlapping booking(s) were automatically cancelled`
+        : null
+    });
 
   } catch (error) {
     console.error('Accept booking error:', error);
@@ -773,23 +786,17 @@ const cancelBookingOwner = async (req, res) => {
     const ownerId = req.user?.id || req.session.ownerId;
     const { id } = req.params;
 
-    const [bookings] = await db.query(`
-      SELECT b.*, p.owner_id, p.name as property_name
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      WHERE b.id = ?
-    `, [id]);
+    const booking = await Booking.findById(id)
+      .populate('property_id', 'owner_id name');
 
-    if (bookings.length === 0) {
+    if (!booking) {
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
       });
     }
 
-    const booking = bookings[0];
-
-    if (booking.owner_id !== ownerId) {
+    if (!booking.property_id.owner_id.equals(ownerId)) {
       return res.status(403).json({
         success: false,
         message: 'You can only cancel bookings for your own properties'
@@ -811,24 +818,20 @@ const cancelBookingOwner = async (req, res) => {
     }
 
     // Cancel the booking (this releases the dates)
-    await db.query(
-      'UPDATE bookings SET status = ?, cancelled_at = NOW() WHERE id = ?',
-      ['CANCELLED', id]
-    );
-
-    const [updatedBookings] = await db.query(
-      'SELECT * FROM bookings WHERE id = ?',
-      [id]
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { status: 'CANCELLED', cancelled_at: new Date() },
+      { new: true }
     );
 
     // Publish status update to Kafka
     try {
       await sendBookingStatusUpdate({
-        id: parseInt(id),
+        id: id,
         status: 'CANCELLED',
         cancelledBy: 'OWNER',
         ownerId,
-        propertyName: booking.property_name,
+        propertyName: booking.property_id.name,
         travelerId: booking.traveler_id,
         cancelledAt: new Date().toISOString()
       });
@@ -840,7 +843,7 @@ const cancelBookingOwner = async (req, res) => {
     res.json({
       success: true,
       message: 'Booking cancelled successfully. The dates are now available for new bookings.',
-      booking: updatedBookings[0]
+      booking: updatedBooking
     });
 
   } catch (error) {
@@ -852,7 +855,6 @@ const cancelBookingOwner = async (req, res) => {
   }
 };
 
-
 /**
  * OWNER: Get all bookings for owner (all statuses - for dashboard stats)
  */
@@ -860,20 +862,29 @@ const getOwnerAllBookings = async (req, res) => {
   try {
     const ownerId = req.user?.id || req.session.ownerId;
     await autoUpdateCompletedBookings();
-    const [bookings] = await db.query(`
-      SELECT
-        b.*,
-        p.name as property_name,
-        p.location as property_location,
-        t.name as traveler_name,
-        t.email as traveler_email
-      FROM bookings b
-      JOIN properties p ON b.property_id = p.id
-      JOIN travelers t ON b.traveler_id = t.id
-      WHERE p.owner_id = ?
-      ORDER BY b.created_at DESC
-    `, [ownerId]);
-    res.json({ success: true, bookings });
+
+    const propertyIds = await getOwnerPropertyIds(ownerId);
+
+    const bookings = await Booking.find({
+      property_id: { $in: propertyIds }
+    })
+      .populate('property_id', 'name location')
+      .populate('traveler_id', 'name email')
+      .sort({ created_at: -1 });
+
+    // Format response
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject();
+      return {
+        ...obj,
+        property_name: obj.property_id?.name,
+        property_location: obj.property_id?.location,
+        traveler_name: obj.traveler_id?.name,
+        traveler_email: obj.traveler_id?.email
+      };
+    });
+
+    res.json({ success: true, bookings: formattedBookings });
   } catch (error) {
     console.error('Get owner all bookings error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

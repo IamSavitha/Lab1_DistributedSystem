@@ -1,5 +1,5 @@
 const { ownerConsumer, travelerConsumer, TOPICS } = require('../config/kafka');
-const db = require('../config/database');
+const { notifyTraveler, notifyOwner } = require('../config/socket');
 
 // Owner Consumer - Listens for booking requests
 const startOwnerConsumer = async () => {
@@ -20,13 +20,13 @@ const startOwnerConsumer = async () => {
             status: bookingData.status
           });
 
-          // Owner service can now see this booking in their dashboard
-          // The booking is already in the database with PENDING status
-          // Owner will accept/reject through the API endpoint
-
-          // Optional: Send notification to owner (future enhancement)
-          // notifyOwner(bookingData);
-
+          // Notify owner via WebSocket
+          if (bookingData.ownerId) {
+            notifyOwner(bookingData.ownerId, {
+              type: 'NEW_BOOKING_REQUEST',
+              booking: bookingData
+            });
+          }
         } catch (error) {
           console.error('❌ Error processing booking request in owner consumer:', error);
         }
@@ -60,16 +60,15 @@ const startTravelerConsumer = async () => {
             propertyName: bookingData.propertyName
           });
 
-          // Traveler service can now see the updated status
-          // The status is already updated in the database
-          // This can be used for real-time notifications
-
-          // Optional: Send notification to traveler (future enhancement)
-          // notifyTraveler(bookingData);
-
-          // Optional: Update cache or trigger real-time update to frontend
-          // via WebSocket or SSE
-
+          // Notify traveler via WebSocket
+          if (bookingData.travelerId) {
+            notifyTraveler(bookingData.travelerId, {
+              type: 'BOOKING_STATUS_UPDATE',
+              bookingId: bookingData.id,
+              status: status || bookingData.status,
+              booking: bookingData
+            });
+          }
         } catch (error) {
           console.error('❌ Error processing booking status update in traveler consumer:', error);
         }

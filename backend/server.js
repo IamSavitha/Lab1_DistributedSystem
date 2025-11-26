@@ -1,4 +1,5 @@
-﻿const express = require('express');
+const express = require('express');
+const http = require('http');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cors = require('cors');
@@ -8,35 +9,12 @@ require('dotenv').config();
 const { initProducer, initConsumers, disconnectKafka } = require('./config/kafka');
 const { startAllConsumers } = require('./kafka/consumers');
 
-// Database connection
-const mysql = require('mysql2/promise');
+// MongoDB connection
+const connectDB = require('./config/mongodb');
+const { initSocket } = require('./config/socket');
 
 const app = express();
-
-// Create database connection pool
-const db = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'airbnb_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
-
-// Test database connection
-db.getConnection()
-  .then(connection => {
-    console.log('âœ… Database connected successfully');
-    connection.release();
-  })
-  .catch(err => {
-    console.error('âŒ Database connection failed:', err.message);
-    console.error('Please check your .env file and MySQL server');
-  });
-
-// Make database available to routes
-app.set('db', db);
+const server = http.createServer(app);
 
 // Import routes - only the ones that exist
 const travelerRoutes = require('./routes/travelerRoutes');
@@ -75,13 +53,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Cookie', 'Authorization']
 }));
 
+// MongoDB URL for sessions (same database now)
+const MONGO_URL = process.env.MONGO_URL || 
+  `mongodb://${process.env.MONGO_USER || 'admin'}:${process.env.MONGO_PASSWORD || 'mongopassword'}@${process.env.MONGO_HOST || 'mongodb-service'}:27017/${process.env.MONGO_DB || 'airbnb_db'}?authSource=admin`;
+
 // Session Configuration with MongoDB - MUST BE BEFORE ROUTES
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URL || 'mongodb://admin:mongopassword@mongodb-service:27017/airbnb_sessions?authSource=admin',
+    mongoUrl: MONGO_URL,
     ttl: 24 * 60 * 60, // 1 day in seconds
     touchAfter: 24 * 3600
     }),
@@ -95,8 +77,8 @@ app.use(session({
 
 // Root route
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Airbnb API Server', 
+  res.json({
+    message: 'Airbnb API Server',
     version: '1.0.0',
     status: 'running',
     endpoints: {
@@ -146,11 +128,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Initialize Kafka and start server
+// Initialize MongoDB, Kafka and start server
 const PORT = process.env.PORT || 4000;
 
 const startServer = async () => {
   try {
+    // Connect to MongoDB
+    await connectDB();
+
+    // Initialize WebSocket
+    initSocket(server);
+
     // Initialize Kafka producer
     await initProducer();
 
@@ -161,39 +149,31 @@ const startServer = async () => {
     await startAllConsumers();
 
     // Start Express server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
       console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(` Health check: http://localhost:${PORT}/health`);
-      console.log('âœ… Kafka integration initialized successfully');
+      console.log('✅ Kafka integration initialized successfully');
     });
 
   } catch (error) {
-    console.error('âŒ Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\nðŸ›‘ Shutting down gracefully...');
+  console.log('\n🛑 Shutting down gracefully...');
   await disconnectKafka();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\nðŸ›‘ Shutting down gracefully...');
+  console.log('\n🛑 Shutting down gracefully...');
   await disconnectKafka();
   process.exit(0);
 });
 
 // Start the server
 startServer();
-
-
-
-
-
-
-
-

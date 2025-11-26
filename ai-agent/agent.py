@@ -13,7 +13,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
 
-import database
+import database_mongodb as database
 import tavily_search
 from prompts import (
     TRAVEL_PLANNER_SYSTEM_PROMPT,

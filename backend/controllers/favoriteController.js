@@ -1,4 +1,6 @@
-const db = require('../config/database');
+const Favorite = require('../models/Favorite');
+const Property = require('../models/Property');
+const mongoose = require('mongoose');
 
 // Add to Favorites
 const addFavorite = async (req, res) => {
@@ -13,13 +15,17 @@ const addFavorite = async (req, res) => {
       });
     }
 
-    // Check if property exists
-    const [properties] = await db.query(
-      'SELECT id FROM properties WHERE id = ?',
-      [propertyId]
-    );
+    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid property ID'
+      });
+    }
 
-    if (properties.length === 0) {
+    // Check if property exists
+    const property = await Property.findById(propertyId);
+
+    if (!property) {
       return res.status(404).json({
         success: false,
         message: 'Property not found'
@@ -27,12 +33,12 @@ const addFavorite = async (req, res) => {
     }
 
     // Check if already favorited
-    const [existing] = await db.query(
-      'SELECT id FROM favorites WHERE traveler_id = ? AND property_id = ?',
-      [travelerId, propertyId]
-    );
+    const existing = await Favorite.findOne({
+      traveler_id: travelerId,
+      property_id: propertyId
+    });
 
-    if (existing.length > 0) {
+    if (existing) {
       return res.status(400).json({
         success: false,
         message: 'Property is already in your favorites'
@@ -40,20 +46,15 @@ const addFavorite = async (req, res) => {
     }
 
     // Add to favorites
-    const [result] = await db.query(
-      'INSERT INTO favorites (traveler_id, property_id) VALUES (?, ?)',
-      [travelerId, propertyId]
-    );
-
-    const [favorites] = await db.query(
-      'SELECT * FROM favorites WHERE id = ?',
-      [result.insertId]
-    );
+    const favorite = await Favorite.create({
+      traveler_id: travelerId,
+      property_id: propertyId
+    });
 
     res.status(201).json({
       success: true,
       message: 'Property added to favorites',
-      favorite: favorites[0]
+      favorite
     });
 
   } catch (error) {
@@ -71,12 +72,19 @@ const removeFavorite = async (req, res) => {
     const travelerId = req.session.travelerId;
     const { propertyId } = req.params;
 
-    const [result] = await db.query(
-      'DELETE FROM favorites WHERE traveler_id = ? AND property_id = ?',
-      [travelerId, propertyId]
-    );
+    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid property ID'
+      });
+    }
 
-    if (result.affectedRows === 0) {
+    const result = await Favorite.findOneAndDelete({
+      traveler_id: travelerId,
+      property_id: propertyId
+    });
+
+    if (!result) {
       return res.status(404).json({
         success: false,
         message: 'Favorite not found'
@@ -102,35 +110,39 @@ const getFavorites = async (req, res) => {
   try {
     const travelerId = req.session.travelerId;
 
-    const [favorites] = await db.query(`
-      SELECT 
-        p.id,
-        p.name,
-        p.type,
-        p.location,
-        p.city,
-        p.country,
-        p.price,
-        p.price as price_per_night,
-        p.bedrooms,
-        p.bathrooms,
-        p.max_guests,
-        p.max_guests as maxGuests,
-        p.image_url,
-        p.image_url as imageUrl,
-        p.description,
-        f.created_at as favoritedAt,
-        f.created_at as favorited_at
-      FROM favorites f
-      JOIN properties p ON f.property_id = p.id
-      WHERE f.traveler_id = ?
-      ORDER BY f.created_at DESC
-    `, [travelerId]);
+    const favorites = await Favorite.find({ traveler_id: travelerId })
+      .populate('property_id', 'name type location city country price bedrooms bathrooms max_guests image_url description')
+      .sort({ created_at: -1 });
+
+    // Format response to match expected structure
+    const formattedFavorites = favorites.map(f => {
+      const obj = f.toObject();
+      const property = obj.property_id;
+      return {
+        id: property?._id,
+        name: property?.name,
+        type: property?.type,
+        location: property?.location,
+        city: property?.city,
+        country: property?.country,
+        price: property?.price,
+        price_per_night: property?.price,
+        bedrooms: property?.bedrooms,
+        bathrooms: property?.bathrooms,
+        max_guests: property?.max_guests,
+        maxGuests: property?.max_guests,
+        image_url: property?.image_url,
+        imageUrl: property?.image_url,
+        description: property?.description,
+        favoritedAt: obj.created_at,
+        favorited_at: obj.created_at
+      };
+    });
 
     res.json({
       success: true,
-      count: favorites.length,
-      favorites
+      count: formattedFavorites.length,
+      favorites: formattedFavorites
     });
 
   } catch (error) {
@@ -148,21 +160,21 @@ const checkFavorite = async (req, res) => {
     const travelerId = req.session.travelerId;
     const { propertyId } = req.params;
 
-    if (!propertyId || isNaN(propertyId)) {
+    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid property ID'
       });
     }
 
-    const [result] = await db.query(
-      'SELECT EXISTS(SELECT 1 FROM favorites WHERE traveler_id = ? AND property_id = ?) as isFavorite',
-      [travelerId, propertyId]
-    );
+    const favorite = await Favorite.findOne({
+      traveler_id: travelerId,
+      property_id: propertyId
+    });
 
     res.json({
       success: true,
-      isFavorite: result[0].isFavorite === 1
+      isFavorite: !!favorite
     });
 
   } catch (error) {

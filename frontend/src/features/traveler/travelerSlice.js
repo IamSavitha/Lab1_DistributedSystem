@@ -2,8 +2,23 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 import { jwtDecode } from 'jwt-decode';
 
+// Helper function to get traveler info from token
+const getTravelerFromToken = () => {
+  const token = localStorage.getItem('travelerToken');
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+      return { id: decoded.id, _id: decoded.id, email: decoded.email };
+    } catch (error) {
+      localStorage.removeItem('travelerToken');
+      return null;
+    }
+  }
+  return null;
+};
+
 const initialState = {
-  travelerInfo: null,
+  travelerInfo: getTravelerFromToken(),
   token: localStorage.getItem('travelerToken') || null,
   isLoggedIn: !!localStorage.getItem('travelerToken'),
   loading: false,
@@ -33,13 +48,22 @@ const travelerSlice = createSlice({
   reducers: {
     loginTraveler(state, action) {
       const { traveler, token } = action.payload;
-      state.travelerInfo = traveler;
+      state.travelerInfo = traveler || getTravelerFromToken();
       state.token = token;
       state.isLoggedIn = true;
 
       // Store token in localStorage
       if (token) {
         localStorage.setItem('travelerToken', token);
+        // Decode token to get user info if traveler not provided
+        if (!traveler) {
+          try {
+            const decoded = jwtDecode(token);
+            state.travelerInfo = { id: decoded.id, _id: decoded.id, email: decoded.email };
+          } catch (e) {
+            console.error('Failed to decode token:', e);
+          }
+        }
       }
     },
     logoutTraveler(state) {
@@ -55,7 +79,7 @@ const travelerSlice = createSlice({
       if (token) {
         try {
           const decoded = jwtDecode(token);
-          state.travelerInfo = { id: decoded.id, email: decoded.email };
+          state.travelerInfo = { id: decoded.id, _id: decoded.id, email: decoded.email };
           state.token = token;
           state.isLoggedIn = true;
         } catch (error) {

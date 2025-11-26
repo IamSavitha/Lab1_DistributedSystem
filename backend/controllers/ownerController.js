@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
-const db = require('../config/database');
 const { isValidEmail } = require('../utils/validation');
 const { generateToken } = require('../utils/jwt');
+const Owner = require('../models/Owner');
 
 // Owner Signup
 const signup = async (req, res) => {
@@ -29,12 +29,9 @@ const signup = async (req, res) => {
       });
     }
 
-    const [existingUsers] = await db.query(
-      'SELECT id FROM owners WHERE email = ?',
-      [email]
-    );
+    const existingUser = await Owner.findOne({ email });
 
-    if (existingUsers.length > 0) {
+    if (existingUser) {
       return res.status(400).json({
         success: false,
         message: 'Email already exists'
@@ -43,20 +40,23 @@ const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [result] = await db.query(
-      'INSERT INTO owners (name, email, location, password) VALUES (?, ?, ?, ?)',
-      [name, email, location, hashedPassword]
-    );
-
-    const [owners] = await db.query(
-      'SELECT id, name, email, location, created_at FROM owners WHERE id = ?',
-      [result.insertId]
-    );
+    const owner = await Owner.create({
+      name,
+      email,
+      location,
+      password: hashedPassword
+    });
 
     res.status(201).json({
       success: true,
       message: 'Owner account created successfully',
-      owner: owners[0]
+      owner: {
+        id: owner._id,
+        name: owner.name,
+        email: owner.email,
+        location: owner.location,
+        created_at: owner.created_at
+      }
     });
 
   } catch (error) {
@@ -80,19 +80,14 @@ const login = async (req, res) => {
       });
     }
 
-    const [owners] = await db.query(
-      'SELECT * FROM owners WHERE email = ?',
-      [email]
-    );
+    const owner = await Owner.findOne({ email });
 
-    if (owners.length === 0) {
+    if (!owner) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
-
-    const owner = owners[0];
 
     const isValidPassword = await bcrypt.compare(password, owner.password);
 
@@ -103,22 +98,24 @@ const login = async (req, res) => {
       });
     }
 
-    req.session.ownerId = owner.id;
+    req.session.ownerId = owner._id;
     req.session.userType = 'owner';
 
     // Generate JWT token
     const token = generateToken({
-      id: owner.id,
+      id: owner._id,
       email: owner.email,
       userType: 'owner'
     });
 
-    delete owner.password;
+    // Return owner without password
+    const ownerResponse = owner.toObject();
+    delete ownerResponse.password;
 
     res.json({
       success: true,
       message: 'Login successful',
-      owner,
+      owner: ownerResponse,
       token
     });
 
@@ -152,8 +149,6 @@ const logout = (req, res) => {
 // Get Owner Profile
 const getProfile = async (req, res) => {
   try {
-    // ✅ 从JWT token获取ownerId (优先)
-    // authMiddleware会将decoded token放在req.user中
     const ownerId = req.user?.id || req.session?.ownerId;
 
     if (!ownerId) {
@@ -163,12 +158,10 @@ const getProfile = async (req, res) => {
       });
     }
 
-    const [owners] = await db.query(
-      'SELECT id, name, email, location, phone, profile_picture, about, created_at FROM owners WHERE id = ?',
-      [ownerId]
-    );
+    const owner = await Owner.findById(ownerId)
+      .select('-password');
 
-    if (owners.length === 0) {
+    if (!owner) {
       return res.status(404).json({
         success: false,
         message: 'Owner not found'
@@ -177,7 +170,7 @@ const getProfile = async (req, res) => {
 
     res.json({
       success: true,
-      owner: owners[0]
+      owner
     });
 
   } catch (error) {
@@ -192,7 +185,6 @@ const getProfile = async (req, res) => {
 // Update Owner Profile
 const updateProfile = async (req, res) => {
   try {
-    // ✅ 从JWT token获取ownerId (优先)
     const ownerId = req.user?.id || req.session?.ownerId;
 
     if (!ownerId) {
@@ -204,53 +196,31 @@ const updateProfile = async (req, res) => {
 
     const { name, phone, profilePicture, about, location } = req.body;
 
-    const updates = [];
-    const values = [];
+    const updateData = {};
 
-    if (name !== undefined) {
-      updates.push('name = ?');
-      values.push(name);
-    }
-    if (phone !== undefined) {
-      updates.push('phone = ?');
-      values.push(phone);
-    }
-    if (profilePicture !== undefined) {
-      updates.push('profile_picture = ?');
-      values.push(profilePicture);
-    }
-    if (about !== undefined) {
-      updates.push('about = ?');
-      values.push(about);
-    }
-    if (location !== undefined) {
-      updates.push('location = ?');
-      values.push(location);
-    }
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (profilePicture !== undefined) updateData.profile_picture = profilePicture;
+    if (about !== undefined) updateData.about = about;
+    if (location !== undefined) updateData.location = location;
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
         message: 'No fields to update'
       });
     }
 
-    values.push(ownerId);
-
-    await db.query(
-      `UPDATE owners SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
-
-    const [owners] = await db.query(
-      'SELECT id, name, email, location, phone, profile_picture, about, created_at, updated_at FROM owners WHERE id = ?',
-      [ownerId]
-    );
+    const owner = await Owner.findByIdAndUpdate(
+      ownerId,
+      updateData,
+      { new: true }
+    ).select('-password');
 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      owner: owners[0]
+      owner
     });
 
   } catch (error) {

@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 import agent
-import database
+import database_mongodb as database  # Changed: Use MongoDB database module
 from fastapi import FastAPI
 
 app = FastAPI()
@@ -50,9 +50,9 @@ class BookingDates(BaseModel):
 
 
 class BookingContext(BaseModel):
-    travelerId: Optional[int] = Field(None, description="Traveler ID for fetching history")
-    bookingId: Optional[int] = Field(None, description="Existing booking ID")
-    propertyId: Optional[int] = Field(None, description="Property ID")
+    travelerId: Optional[str] = Field(None, description="Traveler ID for fetching history")  # Changed: str for ObjectId
+    bookingId: Optional[str] = Field(None, description="Existing booking ID")  # Changed: str for ObjectId
+    propertyId: Optional[str] = Field(None, description="Property ID")  # Changed: str for ObjectId
     location: Optional[str] = Field(None, description="Destination city")
     dates: Optional[BookingDates] = Field(None, description="Travel dates")
     partyType: str = Field(default="solo", description="Party type: solo, couple, family, friends")
@@ -73,7 +73,7 @@ class TravelPlanRequest(BaseModel):
         default_factory=TravelPreferences,
         description="User preferences (optional, AI will infer if missing)"
     )
-    
+
     class Config:
         schema_extra = {
             "example": {
@@ -135,7 +135,7 @@ async def health_check():
     """Health check endpoint"""
     try:
         db_status = database.test_connection()
-        
+
         return {
             "status": "healthy" if db_status else "degraded",
             "database": "connected" if db_status else "disconnected",
@@ -154,10 +154,10 @@ async def health_check():
 async def generate_travel_plan(request: TravelPlanRequest):
     """
     Generate a personalized travel plan
-    
+
     This endpoint:
     1. Receives user query and travel context
-    2. Optionally fetches booking details from MySQL database
+    2. Optionally fetches booking details from MongoDB database
     3. Performs Tavily web search for POIs, restaurants, weather, events
     4. Uses LangChain + GPT-4 to generate personalized itinerary
     5. Uses AI to infer user preferences from booking history if not provided
@@ -170,35 +170,35 @@ async def generate_travel_plan(request: TravelPlanRequest):
         print(f"Booking Context: {request.bookingContext.dict()}")
         print(f"Preferences: {request.preferences.dict() if request.preferences else {}}")
         print("=" * 70)
-        
+
         # Convert Pydantic models to dictionaries
         booking_context = request.bookingContext.dict()
-        
+
         # Handle optional preferences - if empty, pass empty dict for AI inference
         preferences = request.preferences.dict() if request.preferences else {}
-        
+
         # Generate travel plan using AI agent
         travel_plan = agent.create_travel_plan(
             query=request.query,
             booking_context=booking_context,
             preferences=preferences
         )
-        
+
         if not travel_plan.get("success"):
             raise HTTPException(
                 status_code=500,
                 detail="Failed to generate travel plan"
             )
-        
+
         print("=" * 70)
         print("Travel plan generated successfully!")
         print(f"Activities: {len(travel_plan.get('activities', []))}")
         print(f"Restaurants: {len(travel_plan.get('restaurants', []))}")
         print(f"Days: {len(travel_plan.get('dayByDayPlan', []))}")
         print("=" * 70)
-        
+
         return travel_plan
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -220,7 +220,7 @@ async def test_components():
         "openai": False,
         "errors": []
     }
-    
+
     # Test database
     try:
         results["database"] = database.test_connection()
@@ -228,17 +228,17 @@ async def test_components():
             results["errors"].append("Database connection failed")
     except Exception as e:
         results["errors"].append(f"Database error: {str(e)}")
-    
-    # Test environment variables
-    required_vars = ["OPENAI_API_KEY", "TAVILY_API_KEY", "DB_HOST", "DB_NAME"]
+
+    # Test environment variables - Changed: Use MongoDB env vars
+    required_vars = ["OPENAI_API_KEY", "TAVILY_API_KEY", "MONGO_HOST", "MONGO_DB"]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
-    
+
     if missing_vars:
         results["errors"].append(f"Missing environment variables: {', '.join(missing_vars)}")
     else:
         results["openai"] = bool(os.getenv("OPENAI_API_KEY"))
         results["tavily"] = bool(os.getenv("TAVILY_API_KEY"))
-    
+
     return {
         "status": "healthy" if all([results["database"], results["tavily"], results["openai"]]) else "degraded",
         "components": results,
@@ -248,9 +248,9 @@ async def test_components():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     port = int(os.getenv("PORT", 8000))
-    
+
     print("=" * 70)
     print("Starting AI Travel Concierge Agent Server")
     print(f"Port: {port}")
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     print(f"Health: http://localhost:{port}/health")
     print(f"Test: http://localhost:{port}/ai-agent/test")
     print("=" * 70)
-    
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

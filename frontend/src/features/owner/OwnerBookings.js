@@ -8,7 +8,6 @@ const OwnerBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [actionLoading, setActionLoading] = useState({});
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -25,7 +24,7 @@ const OwnerBookings = () => {
     try {
       setLoading(true);
       let endpoint = '';
-      
+
       switch (activeTab) {
         case 'accepted':
           endpoint = '/api/bookings/owner/accepted';
@@ -48,7 +47,7 @@ const OwnerBookings = () => {
           }
         }
       );
-      
+
       if (response.data.success) {
         setBookings(response.data.bookings);
         setPagination(prev => ({
@@ -67,50 +66,20 @@ const OwnerBookings = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1 when changing tabs
-  };
-
-  const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) {
-      return;
-    }
-
-    try {
-      setActionLoading(prev => ({ ...prev, [bookingId]: 'cancelling' }));
-      
-      const response = await axios.put(
-        `http://54.185.125.23:30344/api/bookings/owner/${bookingId}/cancel`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        alert('Booking cancelled successfully!');
-        fetchBookings(); // Refresh the list
-      }
-    } catch (err) {
-      console.error('Error cancelling booking:', err);
-      alert(err.response?.data?.message || 'Failed to cancel booking');
-    } finally {
-      setActionLoading(prev => ({ ...prev, [bookingId]: null }));
-    }
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     const date = new Date(dateString);
-    
+
     if (isNaN(date.getTime())) return 'Invalid Date';
-    
+
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const year = date.getFullYear();
-    
+
     return `${month}/${day}/${year}`;
   };
 
@@ -130,28 +99,6 @@ const OwnerBookings = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, page: newPage }));
-    }
-  };
-
-  const renderBookingActions = (booking) => {
-    if (booking.status === 'ACCEPTED') {
-      return (
-        <div className="booking-actions">
-          <button
-            className="btn btn-cancel"
-            onClick={() => handleCancelBooking(booking.id)}
-            disabled={actionLoading[booking.id]}
-          >
-            {actionLoading[booking.id] === 'cancelling' ? 'Processing...' : 'Cancel Booking'}
-          </button>
-        </div>
-      );
-    } else {
-      return (
-        <div className="booking-actions">
-          <span className="action-disabled">No actions available</span>
-        </div>
-      );
     }
   };
 
@@ -207,7 +154,7 @@ const OwnerBookings = () => {
         <>
           <div className="bookings-list">
             {bookings.map((booking) => (
-              <div key={booking.id} className="booking-card">
+              <div key={booking._id} className="booking-card">
                 <div className="booking-header">
                   <h3>{booking.property_name}</h3>
                   <span className={`status-badge ${getStatusClass(booking.status)}`}>
@@ -274,8 +221,6 @@ const OwnerBookings = () => {
                     </div>
                   )}
                 </div>
-
-                {renderBookingActions(booking)}
               </div>
             ))}
           </div>
@@ -290,11 +235,11 @@ const OwnerBookings = () => {
               >
                 Previous
               </button>
-              
+
               <span className="pagination-info">
                 Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
               </span>
-              
+
               <button
                 className="pagination-btn"
                 onClick={() => handlePageChange(pagination.page + 1)}
@@ -311,4 +256,3 @@ const OwnerBookings = () => {
 };
 
 export default OwnerBookings;
-

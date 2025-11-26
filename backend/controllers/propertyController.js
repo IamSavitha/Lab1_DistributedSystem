@@ -1,6 +1,26 @@
-// backend/controllers/propertyController.js
-const db = require('../config/database');
 const { isValidDate, isEndDateAfterStartDate } = require('../utils/validation');
+const Property = require('../models/Property');
+const Booking = require('../models/Booking');
+const mongoose = require('mongoose');
+
+// Helper: format property response with aliases
+const formatProperty = (p) => {
+  if (!p) return null;
+  const obj = p.toObject ? p.toObject() : p;
+  return {
+    ...obj,
+    id: obj._id,
+    title: obj.name,
+    price_per_night: obj.price,
+    maxGuests: obj.max_guests,
+    imageUrl: obj.image_url,
+    availableFrom: obj.available_from,
+    availableTo: obj.available_to,
+    ownerId: obj.owner_id,
+    createdAt: obj.created_at,
+    ownerName: obj.owner_id?.name || null
+  };
+};
 
 /**
  * PUBLIC: Search properties
@@ -28,75 +48,57 @@ const searchProperties = async (req, res) => {
       return res.status(400).json({ success: false, message: 'End date must be after start date' });
     }
 
-    // Base query — parentheses around OR clause to avoid logic surprises with later ANDs
-    let query = `
-      SELECT 
-        p.id,
-        p.name,
-        p.name AS title,
-        p.type,
-        p.location,
-        p.city,
-        p.state,
-        p.country,
-        p.price,
-        p.price AS price_per_night,
-        p.bedrooms,
-        p.bathrooms,
-        p.max_guests,
-        p.max_guests AS maxGuests,
-        p.image_url,
-        p.image_url AS imageUrl,
-        p.description,
-        p.amenities,
-        p.available_from,
-        p.available_from AS availableFrom,
-        p.available_to,
-        p.available_to AS availableTo,
-        p.owner_id,
-        p.owner_id AS ownerId
-      FROM properties p
-      WHERE (p.city LIKE ? OR p.country LIKE ? OR p.location LIKE ?)
-    `;
-    const params = [`%${location}%`, `%${location}%`, `%${location}%`];
+    // Build query
+    const locationRegex = new RegExp(location, 'i');
+    const query = {
+      $or: [
+        { city: locationRegex },
+        { country: locationRegex },
+        { location: locationRegex }
+      ]
+    };
 
     // Date window
     if (startDate && endDate) {
-      query += ` AND p.available_from <= ? AND p.available_to >= ?`;
-      params.push(startDate, endDate);
+      query.available_from = { $lte: new Date(startDate) };
+      query.available_to = { $gte: new Date(endDate) };
 
-      // Exclude properties with conflicting ACCEPTED bookings
-      query += ` AND p.id NOT IN (
-        SELECT property_id FROM bookings 
-        WHERE status = 'ACCEPTED' 
-        AND (
-          (start_date <= ? AND end_date >= ?) OR
-          (start_date <= ? AND end_date >= ?) OR
-          (start_date >= ? AND end_date <= ?)
-        )
-      )`;
-      params.push(startDate, startDate, endDate, endDate, startDate, endDate);
+      // Find properties with conflicting ACCEPTED bookings
+      const conflictingBookings = await Booking.find({
+        status: 'ACCEPTED',
+        $or: [
+          { start_date: { $lte: new Date(startDate) }, end_date: { $gte: new Date(startDate) } },
+          { start_date: { $lte: new Date(endDate) }, end_date: { $gte: new Date(endDate) } },
+          { start_date: { $gte: new Date(startDate) }, end_date: { $lte: new Date(endDate) } }
+        ]
+      }).select('property_id');
+
+      const excludeIds = conflictingBookings.map(b => b.property_id);
+      if (excludeIds.length > 0) {
+        query._id = { $nin: excludeIds };
+      }
     } else if (startDate && !endDate) {
-      query += ` AND p.available_to >= ?`;
-      params.push(startDate);
+      query.available_to = { $gte: new Date(startDate) };
     } else if (!startDate && endDate) {
-      query += ` AND p.available_from <= ?`;
-      params.push(endDate);
+      query.available_from = { $lte: new Date(endDate) };
     }
 
     // Guests
     if (guests) {
       const g = parseInt(guests, 10);
       if (!Number.isNaN(g)) {
-        query += ` AND p.max_guests >= ?`;
-        params.push(g);
+        query.max_guests = { $gte: g };
       }
     }
 
-    query += ` ORDER BY p.created_at DESC`;
+    const properties = await Property.find(query)
+      .sort({ created_at: -1 });
 
-    const [properties] = await db.query(query, params);
-    res.json({ success: true, count: properties.length, properties });
+    res.json({
+      success: true,
+      count: properties.length,
+      properties: properties.map(formatProperty)
+    });
   } catch (error) {
     console.error('Search properties error:', error);
     res.status(500).json({ success: false, message: 'Server error. Please try again later.' });
@@ -110,48 +112,19 @@ const searchProperties = async (req, res) => {
 const getPropertyById = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!id || isNaN(id)) {
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid property ID' });
     }
 
-    const [properties] = await db.query(`
-      SELECT 
-        p.id,
-        p.name,
-        p.name AS title,
-        p.type,
-        p.location,
-        p.city,
-        p.state,
-        p.country,
-        p.price,
-        p.price AS price_per_night,
-        p.bedrooms,
-        p.bathrooms,
-        p.max_guests,
-        p.max_guests AS maxGuests,
-        p.image_url,
-        p.image_url AS imageUrl,
-        p.description,
-        p.amenities,
-        p.available_from,
-        p.available_from AS availableFrom,
-        p.available_to,
-        p.available_to AS availableTo,
-        p.owner_id,
-        p.owner_id AS ownerId,
-        p.created_at AS createdAt,
-        o.name AS ownerName
-      FROM properties p
-      LEFT JOIN owners o ON p.owner_id = o.id
-      WHERE p.id = ?
-    `, [id]);
+    const property = await Property.findById(id)
+      .populate('owner_id', 'name email');
 
-    if (properties.length === 0) {
+    if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
 
-    res.json({ success: true, property: properties[0] });
+    res.json({ success: true, property: formatProperty(property) });
   } catch (error) {
     console.error('Get property error:', error);
     res.status(500).json({ success: false, message: 'Server error. Please try again later.' });
@@ -160,8 +133,6 @@ const getPropertyById = async (req, res) => {
 
 /**
  * OWNER (protected): Create property
- * Body: name, type, location?, city, state?, country, price, bedrooms, bathrooms, maxGuests,
- *       imageUrl?, description?, amenities? (array|string), availableFrom?, availableTo?
  */
 const createProperty = async (req, res) => {
   try {
@@ -220,71 +191,35 @@ const createProperty = async (req, res) => {
       return res.status(400).json({ success: false, message: 'availableTo must be after availableFrom' });
     }
 
-    // Normalize amenities to JSON string if array/object
+    // Normalize amenities
     if (amenities && typeof amenities !== 'string') {
       try { amenities = JSON.stringify(amenities); } catch { amenities = '[]'; }
     }
     if (!amenities) amenities = '[]';
 
-    const [result] = await db.query(`
-      INSERT INTO properties 
-      (owner_id, name, type, location, city, state, country, price, bedrooms, bathrooms, max_guests, image_url, description, amenities, available_from, available_to)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      ownerId,
+    const property = await Property.create({
+      owner_id: ownerId,
       name,
       type,
-      location || `${city}, ${country}`,
+      location: location || `${city}, ${country}`,
       city,
-      state || null,
+      state: state || null,
       country,
       price,
       bedrooms,
       bathrooms,
-      maxGuests,
-      imageUrl || 'https://via.placeholder.com/400x300',
-      description || '',
+      max_guests: maxGuests,
+      image_url: imageUrl || 'https://via.placeholder.com/400x300',
+      description: description || '',
       amenities,
-      availableFrom || null,
-      availableTo || null
-    ]);
-
-    // Return a consistent, aliased shape
-    const [rows] = await db.query(`
-      SELECT 
-        p.id,
-        p.name,
-        p.name AS title,
-        p.type,
-        p.location,
-        p.city,
-        p.state,
-        p.country,
-        p.price,
-        p.price AS price_per_night,
-        p.bedrooms,
-        p.bathrooms,
-        p.max_guests,
-        p.max_guests AS maxGuests,
-        p.image_url,
-        p.image_url AS imageUrl,
-        p.description,
-        p.amenities,
-        p.available_from,
-        p.available_from AS availableFrom,
-        p.available_to,
-        p.available_to AS availableTo,
-        p.owner_id,
-        p.owner_id AS ownerId,
-        p.created_at AS createdAt
-      FROM properties p
-      WHERE p.id = ?
-    `, [result.insertId]);
+      available_from: availableFrom || null,
+      available_to: availableTo || null
+    });
 
     res.status(201).json({
       success: true,
       message: 'Property created successfully',
-      property: rows[0]
+      property: formatProperty(property)
     });
   } catch (error) {
     console.error('Create property error:', error);
@@ -294,8 +229,6 @@ const createProperty = async (req, res) => {
 
 /**
  * OWNER (protected): Update property
- * Params: :id
- * Body: any subset of fields from createProperty
  */
 const updateProperty = async (req, res) => {
   try {
@@ -304,10 +237,14 @@ const updateProperty = async (req, res) => {
 
     const { id } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid property ID' });
+    }
+
     // Verify ownership
-    const [properties] = await db.query('SELECT * FROM properties WHERE id = ?', [id]);
-    if (properties.length === 0) return res.status(404).json({ success: false, message: 'Property not found' });
-    if (properties[0].owner_id !== ownerId) {
+    const property = await Property.findById(id);
+    if (!property) return res.status(404).json({ success: false, message: 'Property not found' });
+    if (!property.owner_id.equals(ownerId)) {
       return res.status(403).json({ success: false, message: 'You can only update your own properties' });
     }
 
@@ -317,10 +254,7 @@ const updateProperty = async (req, res) => {
       amenities, availableFrom, availableTo
     } = req.body;
 
-    const updates = [];
-    const values = [];
-
-    // Validate/normalize dates if present
+    // Validate dates if present
     if (availableFrom && !isValidDate(availableFrom)) {
       return res.status(400).json({ success: false, message: 'Invalid availableFrom date format. Use YYYY-MM-DD' });
     }
@@ -331,78 +265,51 @@ const updateProperty = async (req, res) => {
       return res.status(400).json({ success: false, message: 'availableTo must be after availableFrom' });
     }
 
-    // Numbers (validate if present)
+    const updateData = {};
+
+    // Numbers
     if (price !== undefined) {
       price = Number(price);
       if (price <= 0) return res.status(400).json({ success: false, message: 'Price must be a positive number' });
-      updates.push('price = ?'); values.push(price);
+      updateData.price = price;
     }
-    if (bedrooms !== undefined) { bedrooms = Number(bedrooms); updates.push('bedrooms = ?'); values.push(bedrooms); }
-    if (bathrooms !== undefined) { bathrooms = Number(bathrooms); updates.push('bathrooms = ?'); values.push(bathrooms); }
-    if (maxGuests !== undefined) { maxGuests = Number(maxGuests); updates.push('max_guests = ?'); values.push(maxGuests); }
+    if (bedrooms !== undefined) updateData.bedrooms = Number(bedrooms);
+    if (bathrooms !== undefined) updateData.bathrooms = Number(bathrooms);
+    if (maxGuests !== undefined) updateData.max_guests = Number(maxGuests);
 
     // Strings
-    if (name !== undefined)        { updates.push('name = ?'); values.push(name); }
-    if (type !== undefined)        { updates.push('type = ?'); values.push(type); }
-    if (location !== undefined)    { updates.push('location = ?'); values.push(location); }
-    if (city !== undefined)        { updates.push('city = ?'); values.push(city); }
-    if (state !== undefined)       { updates.push('state = ?'); values.push(state); }
-    if (country !== undefined)     { updates.push('country = ?'); values.push(country); }
-    if (imageUrl !== undefined)    { updates.push('image_url = ?'); values.push(imageUrl); }
-    if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type;
+    if (location !== undefined) updateData.location = location;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (country !== undefined) updateData.country = country;
+    if (imageUrl !== undefined) updateData.image_url = imageUrl;
+    if (description !== undefined) updateData.description = description;
 
-    // Amenities — normalize to JSON string if array/object
+    // Amenities
     if (amenities !== undefined) {
       if (typeof amenities !== 'string') {
         try { amenities = JSON.stringify(amenities); } catch { amenities = '[]'; }
       }
-      updates.push('amenities = ?'); values.push(amenities);
+      updateData.amenities = amenities;
     }
 
     // Dates
-    if (availableFrom !== undefined) { updates.push('available_from = ?'); values.push(availableFrom); }
-    if (availableTo !== undefined)   { updates.push('available_to = ?'); values.push(availableTo); }
+    if (availableFrom !== undefined) updateData.available_from = availableFrom;
+    if (availableTo !== undefined) updateData.available_to = availableTo;
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ success: false, message: 'No fields to update' });
     }
 
-    values.push(id);
-    await db.query(`UPDATE properties SET ${updates.join(', ')} WHERE id = ?`, values);
+    const updated = await Property.findByIdAndUpdate(id, updateData, { new: true });
 
-    // Return aliased shape
-    const [updated] = await db.query(`
-      SELECT 
-        p.id,
-        p.name,
-        p.name AS title,
-        p.type,
-        p.location,
-        p.city,
-        p.state,
-        p.country,
-        p.price,
-        p.price AS price_per_night,
-        p.bedrooms,
-        p.bathrooms,
-        p.max_guests,
-        p.max_guests AS maxGuests,
-        p.image_url,
-        p.image_url AS imageUrl,
-        p.description,
-        p.amenities,
-        p.available_from,
-        p.available_from AS availableFrom,
-        p.available_to,
-        p.available_to AS availableTo,
-        p.owner_id,
-        p.owner_id AS ownerId,
-        p.created_at AS createdAt
-      FROM properties p
-      WHERE p.id = ?
-    `, [id]);
-
-    res.json({ success: true, message: 'Property updated successfully', property: updated[0] });
+    res.json({
+      success: true,
+      message: 'Property updated successfully',
+      property: formatProperty(updated)
+    });
   } catch (error) {
     console.error('Update property error:', error);
     res.status(500).json({ success: false, message: 'Server error. Please try again later.' });
@@ -411,7 +318,6 @@ const updateProperty = async (req, res) => {
 
 /**
  * OWNER (protected): Delete property
- * Params: :id
  */
 const deleteProperty = async (req, res) => {
   try {
@@ -420,15 +326,19 @@ const deleteProperty = async (req, res) => {
 
     const { id } = req.params;
 
-    const [properties] = await db.query('SELECT * FROM properties WHERE id = ?', [id]);
-    if (properties.length === 0) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid property ID' });
+    }
+
+    const property = await Property.findById(id);
+    if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
-    if (properties[0].owner_id !== ownerId) {
+    if (!property.owner_id.equals(ownerId)) {
       return res.status(403).json({ success: false, message: 'You can only delete your own properties' });
     }
 
-    await db.query('DELETE FROM properties WHERE id = ?', [id]);
+    await Property.findByIdAndDelete(id);
     res.json({ success: true, message: 'Property deleted successfully' });
   } catch (error) {
     console.error('Delete property error:', error);
@@ -446,39 +356,14 @@ const getOwnerProperties = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Owner not authenticated' });
     }
 
-    const [properties] = await db.query(`
-      SELECT
-        p.id,
-        p.name,
-        p.name AS title,
-        p.type,
-        p.location,
-        p.city,
-        p.state,
-        p.country,
-        p.price,
-        p.price AS price_per_night,
-        p.bedrooms,
-        p.bathrooms,
-        p.max_guests,
-        p.max_guests AS maxGuests,
-        p.image_url,
-        p.image_url AS imageUrl,
-        p.description,
-        p.amenities,
-        p.available_from,
-        p.available_from AS availableFrom,
-        p.available_to,
-        p.available_to AS availableTo,
-        p.owner_id,
-        p.owner_id AS ownerId,
-        p.created_at AS createdAt
-      FROM properties p
-      WHERE p.owner_id = ?
-      ORDER BY p.created_at DESC
-    `, [ownerId]);
+    const properties = await Property.find({ owner_id: ownerId })
+      .sort({ created_at: -1 });
 
-    res.json({ success: true, count: properties.length, properties });
+    res.json({
+      success: true,
+      count: properties.length,
+      properties: properties.map(formatProperty)
+    });
   } catch (error) {
     console.error('Get owner properties error:', error);
     res.status(500).json({ success: false, message: 'Server error. Please try again later.' });

@@ -137,7 +137,7 @@ const OwnerDashboard = () => {
 
           <button 
             className="action-btn"
-            onClick={() => navigate('/owner/add-property')}
+            onClick={() => navigate('/owner/properties/new')}
           >
             <span className="btn-text">Add New Property</span>
           </button>

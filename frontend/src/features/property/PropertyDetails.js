@@ -26,7 +26,7 @@ function PropertyDetails() {
     dispatch(fetchPropertyById(id));
     dispatch(fetchFavorites());
     
-    // ✅ Clear any previous booking success messages
+    //Clear any previous booking success messages
     dispatch(clearSuccessMessage());
     
     return () => {
@@ -84,7 +84,7 @@ function PropertyDetails() {
 
     try {
       await dispatch(createBooking({
-        propertyId: parseInt(id),
+        propertyId: id,
         startDate: startDate,
         endDate: endDate,
         numGuests: parseInt(guests),

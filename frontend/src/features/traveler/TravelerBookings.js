@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchBookings, cancelBooking } from '../../features/booking/bookingSlice';
+import { connectSocket, disconnectSocket, onBookingStatusUpdate, offBookingStatusUpdate } from '../../services/socket';
 
 function TravelerBookings() {
   const navigate = useNavigate();
@@ -9,23 +10,54 @@ function TravelerBookings() {
 
   // Redux state
   const { bookings, loading, error } = useSelector((state) => state.booking);
+  const { travelerInfo } = useSelector((state) => state.traveler);
 
   // Fetch bookings on component mount
   useEffect(() => {
     dispatch(fetchBookings());
   }, [dispatch]);
 
+  /// WebSocket connection for real-time updates
+  useEffect(() => {
+    const travelerId = travelerInfo?.id || travelerInfo?._id;
+    
+    if (travelerId) {
+      // Connect to WebSocket
+      const socket = connectSocket(travelerId, 'traveler');
+
+      // Listen for booking status updates directly on socket
+      const handleStatusUpdate = (data) => {
+        console.log('Received booking status update:', data);
+        dispatch(fetchBookings());
+      };
+
+      if (socket) {
+        socket.on('booking-status-update', handleStatusUpdate);
+      }
+
+      // Cleanup on unmount
+      return () => {
+        if (socket) {
+          socket.off('booking-status-update', handleStatusUpdate);
+        }
+      };
+    }
+  }, [travelerInfo, dispatch]);
+
   // Get status badge class
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
+    const s = status?.toUpperCase();
+    switch (s) {
+      case 'PENDING':
         return 'bg-warning';
-      case 'accepted':
-      case 'confirmed':
+      case 'ACCEPTED':
+      case 'CONFIRMED':
         return 'bg-success';
-      case 'rejected':
-      case 'cancelled':
+      case 'REJECTED':
+      case 'CANCELLED':
         return 'bg-danger';
+      case 'COMPLETED':
+        return 'bg-info';
       default:
         return 'bg-secondary';
     }
@@ -55,7 +87,7 @@ function TravelerBookings() {
     navigate(`/traveler/property/${propertyId}`);
   };
 
-  // ✅ Handle cancel booking
+  // Handle cancel booking
   const handleCancelBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to cancel this booking?')) {
       return;
@@ -72,13 +104,19 @@ function TravelerBookings() {
     }
   };
 
+  // Get booking ID (MongoDB uses _id)
+  const getBookingId = (booking) => booking._id || booking.id;
+
+  // Check if status is pending (case insensitive)
+  const isPending = (status) => status?.toUpperCase() === 'PENDING';
+
   return (
     <div className="container mt-4">
       {/* Header */}
       <div className="row mb-4">
         <div className="col-12">
           <h2>My Bookings</h2>
-          <p className="text-muted">Manage your reservations</p>
+          <p className="text-muted">Manage your reservations (Real-time updates enabled)</p>
         </div>
       </div>
 
@@ -111,7 +149,7 @@ function TravelerBookings() {
       ) : (
         <div className="row g-4">
           {bookings.map((booking) => (
-            <div key={booking.id} className="col-12">
+            <div key={getBookingId(booking)} className="col-12">
               <div className="card shadow-sm">
                 <div className="card-body">
                   <div className="row">
@@ -152,10 +190,10 @@ function TravelerBookings() {
                         <br />
                         <strong>Duration:</strong> {calculateNights(booking.startDate || booking.start_date, booking.endDate || booking.end_date)} nights
                         <br />
-                        <strong>Guests:</strong> {booking.guests}
+                        <strong>Guests:</strong> {booking.num_guests || booking.guests}
                       </div>
                       <p className="mb-0 text-muted small">
-                        Booking ID: {booking.id}
+                        Booking ID: {getBookingId(booking)}
                       </p>
                     </div>
 
@@ -168,15 +206,15 @@ function TravelerBookings() {
                       <div className="d-grid gap-2">
                         <button
                           className="btn btn-outline-primary btn-sm"
-                          onClick={() => handleViewProperty(booking.property?.id || booking.propertyId || booking.property_id)}
+                          onClick={() => handleViewProperty(booking.property_id?._id || booking.property_id || booking.propertyId)}
                         >
                           View Property
                         </button>
-                        {/* ✅ Cancel button - only show for pending bookings */}
-                        {booking.status === 'pending' && (
-                          <button 
+                        {/* Cancel button - only show for pending bookings */}
+                        {isPending(booking.status) && (
+                          <button
                             className="btn btn-outline-danger btn-sm"
-                            onClick={() => handleCancelBooking(booking.id)}
+                            onClick={() => handleCancelBooking(getBookingId(booking))}
                           >
                             Cancel Booking
                           </button>
@@ -185,7 +223,7 @@ function TravelerBookings() {
                     </div>
                   </div>
                 </div>
-                {booking.status === 'pending' && (
+                {isPending(booking.status) && (
                   <div className="card-footer bg-light">
                     <small className="text-muted">
                       <i className="bi bi-clock"></i> Waiting for owner confirmation
