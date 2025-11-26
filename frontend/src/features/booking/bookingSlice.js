@@ -150,7 +150,7 @@ const bookingSlice = createSlice({
       })
       .addCase(fetchBookingHistory.fulfilled, (state, action) => {
         state.loading = false;
-        state.history = action.payload.history || action.payload;
+        state.history = action.payload.bookings || action.payload.history || action.payload;
       })
       .addCase(fetchBookingHistory.rejected, (state, action) => {
         state.loading = false;
